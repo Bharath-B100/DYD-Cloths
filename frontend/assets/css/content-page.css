@@ -1,0 +1,67 @@
+.content-page .page-header {
+    padding: 8rem 0 3rem;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(249, 115, 22, 0.08));
+}
+
+.content-shell {
+    max-width: 880px;
+    margin: 3rem auto 5rem;
+}
+
+.content-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    padding: 2rem;
+}
+
+.content-panel h2 {
+    margin: 0 0 0.75rem;
+    color: var(--text-primary);
+}
+
+.content-panel h3 {
+    margin: 1.75rem 0 0.5rem;
+    color: var(--text-primary);
+}
+
+.content-panel p,
+.content-panel li {
+    color: var(--text-secondary);
+    line-height: 1.75;
+}
+
+.content-panel ul {
+    padding-left: 1.2rem;
+}
+
+.support-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.support-link {
+    display: block;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.support-link span {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+    .content-panel {
+        padding: 1.25rem;
+    }
+}

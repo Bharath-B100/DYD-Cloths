@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Studio - DYD-Cloths</title>
+    <meta name="description" content="Create your custom T-shirt with our professional design studio. Add text, images, choose colors and sizes.">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/studio.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+</head>
+<body class="studio-page">
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <i class="fas fa-tshirt logo-icon"></i>
+                <span class="site-name">DYD-Cloths</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="shop.html">Shop</a></li>
+                <li><a href="studio.html" class="active">Design Studio</a></li>
+            </ul>
+            <div class="nav-right">
+                <div class="auth-buttons desktop-auth"><a href="login.html" class="auth-link">Sign In</a></div>
+                <div class="cart-icon" id="cartIcon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Studio Layout -->
+    <div class="studio-layout">
+
+        <!-- Left Panel: Tools -->
+        <aside class="studio-panel studio-panel-left" id="leftPanel">
+            <div class="panel-header">
+                <h3><i class="fas fa-magic"></i> Design Tools</h3>
+            </div>
+
+            <!-- View Side Toggle -->
+            <div class="tool-section">
+                <label class="tool-label">Garment Side</label>
+                <div class="side-toggle">
+                    <button class="side-btn active" id="btnFront" onclick="Studio.setSide('front')">
+                        <i class="fas fa-arrow-up"></i> Front
+                    </button>
+                    <button class="side-btn" id="btnBack" onclick="Studio.setSide('back')">
+                        <i class="fas fa-arrow-down"></i> Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- T-Shirt Color -->
+            <div class="tool-section">
+                <label class="tool-label">T-Shirt Color</label>
+                <div class="color-grid" id="shirtColorGrid">
+                    <button class="color-dot active" data-color="#ffffff" style="background:#ffffff" title="White"></button>
+                    <button class="color-dot" data-color="#111827" style="background:#111827" title="Black"></button>
+                    <button class="color-dot" data-color="#1e3a8a" style="background:#1e3a8a" title="Navy Blue"></button>
+                    <button class="color-dot" data-color="#b91c1c" style="background:#b91c1c" title="Red"></button>
+                    <button class="color-dot" data-color="#15803d" style="background:#15803d" title="Green"></button>
+                    <button class="color-dot" data-color="#ca8a04" style="background:#ca8a04" title="Yellow"></button>
+                    <button class="color-dot" data-color="#7c3aed" style="background:#7c3aed" title="Purple"></button>
+                    <button class="color-dot" data-color="#0284c7" style="background:#0284c7" title="Sky Blue"></button>
+                    <button class="color-dot" data-color="#ea580c" style="background:#ea580c" title="Orange"></button>
+                    <button class="color-dot" data-color="#be185d" style="background:#be185d" title="Pink"></button>
+                    <button class="color-dot" data-color="#374151" style="background:#374151" title="Charcoal"></button>
+                    <button class="color-dot" data-color="#f3f4f6" style="background:#f3f4f6; border-color:#ccc" title="Light Grey"></button>
+                </div>
+                <div class="custom-color-row">
+                    <label>Custom:</label>
+                    <input type="color" id="customShirtColor" value="#ffffff">
+                </div>
+            </div>
+
+            <!-- Fabric -->
+            <div class="tool-section">
+                <label class="tool-label">Fabric</label>
+                <select class="studio-select" id="fabricSelect">
+                    <option value="100% Cotton">100% Cotton (₹299)</option>
+                    <option value="Poly Cotton">Poly Cotton Blend (₹349)</option>
+                    <option value="Dry Fit">Dry Fit / Sports (₹379)</option>
+                    <option value="Premium Cotton">Premium Cotton (₹449)</option>
+                    <option value="Organic Cotton">Organic Cotton (₹499)</option>
+                </select>
+            </div>
+
+            <!-- Size -->
+            <div class="tool-section">
+                <label class="tool-label">Size</label>
+                <div class="size-grid" id="sizeGrid">
+                    <button class="size-pill" data-size="XS">XS</button>
+                    <button class="size-pill" data-size="S">S</button>
+                    <button class="size-pill active" data-size="M">M</button>
+                    <button class="size-pill" data-size="L">L</button>
+                    <button class="size-pill" data-size="XL">XL</button>
+                    <button class="size-pill" data-size="XXL">XXL</button>
+                    <button class="size-pill" data-size="3XL">3XL</button>
+                </div>
+            </div>
+
+            <!-- Quantity -->
+            <div class="tool-section">
+                <label class="tool-label">Quantity</label>
+                <div class="qty-control">
+                    <button class="qty-btn" id="qtyMinus">−</button>
+                    <span id="qtyDisplay">1</span>
+                    <button class="qty-btn" id="qtyPlus">+</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center: Canvas Preview -->
+        <main class="studio-canvas-area">
+            <div class="canvas-toolbar">
+                <button class="toolbar-btn" id="btnAddText" title="Add Text">
+                    <i class="fas fa-font"></i> Text
+                </button>
+                <button class="toolbar-btn" id="btnUploadImage" title="Upload Image">
+                    <i class="fas fa-image"></i> Image
+                </button>
+                <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" id="btnBringForward" title="Bring Forward">
+                    <i class="fas fa-level-up-alt"></i>
+                </button>
+                <button class="toolbar-btn" id="btnSendBackward" title="Send Backward">
+                    <i class="fas fa-level-down-alt"></i>
+                </button>
+                <button class="toolbar-btn danger" id="btnDeleteSelected" title="Delete Selected">
+                    <i class="fas fa-trash"></i>
+                </button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" id="btnUndo" title="Undo">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button class="toolbar-btn" id="btnRedo" title="Redo">
+                    <i class="fas fa-redo"></i>
+                </button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" id="btnClearCanvas" title="Clear Design">
+                    <i class="fas fa-eraser"></i> Clear
+                </button>
+            </div>
+
+            <!-- Canvas Wrapper with T-Shirt Mockup -->
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <div class="tshirt-mockup" id="tshirtMockup">
+                    <div class="tshirt-shape" id="tshirtShape">
+                        <div class="print-area-indicator">Print Area</div>
+                    </div>
+                    <canvas id="designCanvas"></canvas>
+                </div>
+                <div class="canvas-side-label" id="canvasSideLabel">FRONT</div>
+            </div>
+
+            <!-- Layer info -->
+            <div class="canvas-hint" id="canvasHint">
+                <i class="fas fa-mouse-pointer"></i> Click an element to select. Drag to move. Use handles to resize/rotate.
+            </div>
+        </main>
+
+        <!-- Right Panel: Text & Layer Properties -->
+        <aside class="studio-panel studio-panel-right" id="rightPanel">
+            <div class="panel-header">
+                <h3><i class="fas fa-sliders-h"></i> Properties</h3>
+            </div>
+
+            <!-- Text Properties (shown when text selected) -->
+            <div class="tool-section" id="textPropertiesPanel">
+                <label class="tool-label">Add / Edit Text</label>
+                <input type="text" class="studio-input" id="textInput" placeholder="Type your text..." maxlength="60">
+                <button class="studio-btn-full" id="btnApplyText">
+                    <i class="fas fa-plus"></i> Add Text to Design
+                </button>
+
+                <label class="tool-label" style="margin-top:12px">Font</label>
+                <select class="studio-select" id="fontFamily">
+                    <option value="Inter">Inter (Modern)</option>
+                    <option value="Impact">Impact (Bold)</option>
+                    <option value="Georgia">Georgia (Classic)</option>
+                    <option value="Courier New">Courier (Retro)</option>
+                    <option value="Arial Black">Arial Black (Heavy)</option>
+                    <option value="Brush Script MT">Brush (Handwritten)</option>
+                    <option value="Trebuchet MS">Trebuchet (Clean)</option>
+                </select>
+
+                <label class="tool-label" style="margin-top:12px">Font Size</label>
+                <div class="range-row">
+                    <input type="range" id="fontSize" min="12" max="120" value="40" class="studio-range">
+                    <span id="fontSizeValue">40px</span>
+                </div>
+
+                <label class="tool-label" style="margin-top:12px">Text Color</label>
+                <div class="color-row">
+                    <input type="color" id="textColorPicker" value="#111111">
+                    <div class="quick-text-colors">
+                        <button class="qtc" data-color="#111111" style="background:#111111"></button>
+                        <button class="qtc" data-color="#ffffff" style="background:#ffffff; border-color:#ccc"></button>
+                        <button class="qtc" data-color="#ef4444" style="background:#ef4444"></button>
+                        <button class="qtc" data-color="#3b82f6" style="background:#3b82f6"></button>
+                        <button class="qtc" data-color="#f59e0b" style="background:#f59e0b"></button>
+                        <button class="qtc" data-color="#10b981" style="background:#10b981"></button>
+                    </div>
+                </div>
+
+                <label class="tool-label" style="margin-top:12px">Style</label>
+                <div class="style-btns">
+                    <button class="style-btn" id="btnBold" title="Bold"><i class="fas fa-bold"></i></button>
+                    <button class="style-btn" id="btnItalic" title="Italic"><i class="fas fa-italic"></i></button>
+                    <button class="style-btn" id="btnUnderline" title="Underline"><i class="fas fa-underline"></i></button>
+                    <button class="style-btn" id="btnAlignLeft" title="Align Left"><i class="fas fa-align-left"></i></button>
+                    <button class="style-btn" id="btnAlignCenter" title="Center"><i class="fas fa-align-center"></i></button>
+                    <button class="style-btn" id="btnAlignRight" title="Align Right"><i class="fas fa-align-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Image Properties -->
+            <div class="tool-section" id="imagePropertiesPanel">
+                <label class="tool-label">Image Opacity</label>
+                <div class="range-row">
+                    <input type="range" id="imageOpacity" min="10" max="100" value="100" class="studio-range">
+                    <span id="imageOpacityValue">100%</span>
+                </div>
+            </div>
+
+            <!-- Layers -->
+            <div class="tool-section">
+                <label class="tool-label">Layers <span id="layerCount" style="color:var(--text-muted)">(0)</span></label>
+                <div class="layers-list" id="layersList">
+                    <p class="no-layers-msg">No elements yet. Add text or image.</p>
+                </div>
+            </div>
+
+            <!-- Price Summary -->
+            <div class="price-summary-panel">
+                <div class="price-row-s">
+                    <span id="priceLabel">Base Price</span>
+                    <span id="basePrice">₹299</span>
+                </div>
+                <div class="price-row-s" id="printPriceRow" style="display:none">
+                    <span>Print Cost</span>
+                    <span id="printPrice">+₹0</span>
+                </div>
+                <div class="price-row-s final-s">
+                    <span>Total <small id="qtyNote">(×1)</small></span>
+                    <span id="totalPrice">₹299</span>
+                </div>
+                <button class="studio-add-cart-btn" id="addToCartBtn">
+                    <i class="fas fa-shopping-bag"></i> Add to Cart
+                </button>
+                <a class="studio-whatsapp-btn" href="https://wa.me/919943935576" target="_blank" rel="noopener">
+                    <i class="fab fa-whatsapp"></i> WhatsApp for Bulk Orders
+                </a>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Your Cart</h3>
+            <button class="close-cart">&times;</button>
+        </div>
+        <div class="cart-items"></div>
+        <div class="cart-footer">
+            <div class="cart-total"><span>Total:</span><span class="total-amount">₹0</span></div>
+            <button class="btn btn-primary btn-full checkout-btn">Checkout</button>
+        </div>
+    </div>
+    <div class="cart-overlay"></div>
+
+    <!-- Scripts -->
+    <script src="assets/js/core/utils.js"></script>
+    <script src="assets/js/core/api.js"></script>
+    <script src="assets/js/core/auth.js"></script>
+    <script src="assets/js/core/cart.js"></script>
+    <!-- Fabric.js Canvas Library (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/studio.js"></script>
+    <script src="assets/js/search.js"></script>
+</body>
+</html>

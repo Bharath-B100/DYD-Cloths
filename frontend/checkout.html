@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - DYD-Cloths</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/checkout.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Razorpay Checkout Script -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body class="checkout-page">
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <i class="fas fa-tshirt logo-icon"></i>
+                <span>DYD-Cloths</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="shop.html">Shop</a></li>
+                <li><a href="studio.html">Design Studio</a></li>
+            </ul>
+            <div class="nav-right">
+                <div class="cart-icon" id="cartIcon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="checkout-container">
+        <main class="checkout-main">
+            <div class="checkout-steps">
+                <div class="step active" id="step1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Shipping</div>
+                </div>
+                <div class="step" id="step2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Payment</div>
+                </div>
+                <div class="step" id="step3">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Review</div>
+                </div>
+            </div>
+
+            <form id="checkoutForm">
+                <!-- Shipping Section -->
+                <div class="checkout-section" id="shippingSection">
+                    <h3><i class="fas fa-shipping-fast"></i> Shipping Information</h3>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="required">First Name</label>
+                            <input type="text" name="firstName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Last Name</label>
+                            <input type="text" name="lastName" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="required">Email Address</label>
+                        <input type="email" name="email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" name="phone" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="required">Street Address</label>
+                        <input type="text" name="address" class="form-control" required>
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="required">City</label>
+                            <input type="text" name="city" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">State</label>
+                            <input type="text" name="state" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">ZIP Code</label>
+                            <input type="text" name="zipCode" class="form-control" required>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-full next-step" data-next="2">Continue to Payment</button>
+                </div>
+
+                <!-- Payment Section -->
+                <div class="checkout-section" id="paymentSection" style="display: none;">
+                    <h3><i class="fas fa-credit-card"></i> Payment Method</h3>
+                    
+                    <!-- Coupon Section -->
+                    <div class="coupon-section">
+                        <h3><i class="fas fa-tag"></i> Have a Coupon?</h3>
+                        <div class="coupon-input-group">
+                            <input type="text" id="couponCode" placeholder="Enter coupon code" class="form-control">
+                            <button type="button" id="applyCouponBtn" class="btn btn-outline">Apply</button>
+                        </div>
+                        <div id="couponMessage" class="coupon-message"></div>
+                    </div>
+                    <div class="payment-methods">
+                        <div class="payment-method selected" data-method="razorpay" id="pmRazorpay">
+                            <div class="payment-method-inner">
+                                <img src="https://razorpay.com/favicon.png" alt="Razorpay" style="width:20px;height:20px;object-fit:contain">
+                                <div>
+                                    <strong>Pay Online</strong>
+                                    <small>Cards, UPI, Net Banking, Wallets</small>
+                                </div>
+                                <span class="payment-badge secure"><i class="fas fa-shield-alt"></i> Secure</span>
+                            </div>
+                        </div>
+                        <div class="payment-method" data-method="cod" id="pmCOD">
+                            <div class="payment-method-inner">
+                                <i class="fas fa-money-bill-wave payment-icon cod"></i>
+                                <div>
+                                    <strong>Cash on Delivery</strong>
+                                    <small>Pay when you receive your order</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Razorpay info notice (replaces dummy card form) -->
+                    <div class="razorpay-notice" id="razorpayNotice">
+                        <i class="fas fa-info-circle"></i>
+                        After clicking <strong>"Review Order"</strong>, you'll be redirected to the secure Razorpay payment page where you can pay via UPI, Credit/Debit Card, Net Banking, or Wallet.
+                    </div>
+                    
+                    <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button type="button" class="btn btn-outline prev-step" data-prev="1">Back</button>
+                        <button type="button" class="btn btn-primary next-step" data-next="3">Review Order</button>
+                    </div>
+                </div>
+
+                <!-- Review Section -->
+                <div class="checkout-section" id="reviewSection" style="display: none;">
+                    <h3><i class="fas fa-check-circle"></i> Review Your Order</h3>
+                    <div class="order-review-details" id="orderReviewDetails">
+                        <p>Please review your shipping and payment details before placing the order.</p>
+                        <!-- Summary info will be injected by JS -->
+                    </div>
+                    <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button type="button" class="btn btn-outline prev-step" data-prev="2">Back</button>
+                        <button type="submit" class="btn btn-primary btn-full">Place Order</button>
+                    </div>
+                </div>
+            </form>
+        </main>
+
+        <aside class="order-summary-sidebar">
+            <div class="summary-header">
+                <h3>Order Summary</h3>
+            </div>
+            <div class="order-items" id="summaryItems">
+                <!-- Items will be loaded by JS -->
+            </div>
+            <div class="order-totals">
+                <div class="total-row">
+                    <span>Subtotal</span>
+                    <span id="summarySubtotal">₹0</span>
+                </div>
+                <div class="total-row">
+                    <span>Shipping</span>
+                    <span id="summaryShipping">₹0</span>
+                </div>
+                <div class="total-row final">
+                    <span>Total</span>
+                    <span id="summaryTotal">₹0</span>
+                </div>
+            </div>
+            <div class="security-badge">
+                <i class="fas fa-shield-alt"></i>
+                <div>
+                    <p><strong>Secure Checkout</strong></p>
+                    <p style="font-size: 0.75rem;">Your data is encrypted and secure</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+    <script src="assets/js/core/utils.js"></script>
+    <script src="assets/js/core/api.js"></script>
+    <script src="assets/js/core/auth.js"></script>
+    <script src="assets/js/core/cart.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/checkout.js"></script>
+    <script src="assets/js/search.js"></script>
+</body>
+</html>

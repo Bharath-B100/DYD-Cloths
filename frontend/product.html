@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details - DYD-Cloths</title>
+    <!-- Dynamic SEO tags will be injected here -->
+    
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/shop.css">
+    <link rel="stylesheet" href="assets/css/product.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+</head>
+<body class="product-page">
+    <nav class="navbar">
+
+        <div class="nav-container">
+            <!-- Logo -->
+            <a href="index.html" class="logo">
+                <i class="fas fa-tshirt logo-icon"></i>
+                <span>DYD-Cloths</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+            </a>
+
+            <div class="search-wrapper">
+                <form class="site-search" id="siteSearch" action="shop.html" method="get">
+                    <i class="fas fa-search"></i>
+                    <input type="search" id="searchInput" name="search" 
+                           placeholder="Search T-shirts, polos, caps and bags..." 
+                           autocomplete="off">
+                    <div class="search-suggestions" id="searchSuggestions"></div>
+                </form>
+            </div>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <!-- Navigation Links -->
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="shop.html" class="active">Shop</a></li>
+                <li><a href="studio.html">Design Studio</a></li>
+                
+                <!-- Auth Links (shown on mobile) -->
+                <div class="auth-buttons mobile-auth">
+                    <a href="login.html" class="auth-link">Sign In</a>
+                </div>
+            </ul>
+
+            <!-- Desktop Auth & Cart -->
+            <div class="nav-right">
+                <div class="auth-buttons desktop-auth">
+                    <a href="login.html" class="auth-link">Sign In</a>
+                </div>
+                
+                <!-- Cart Icon -->
+                <div class="cart-icon" id="cartIcon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </div>
+            </div>
+        </div>
+
+    </nav>
+
+    <div class="container product-container mt-4" style="margin-top: 2rem;">
+        <div class="breadcrumb" id="productBreadcrumb">
+            <a href="index.html">Home</a> / <a href="shop.html">Shop</a> / <span id="bcProductName">Loading...</span>
+        </div>
+
+        <div class="product-main-grid">
+            <div class="product-gallery">
+                <img id="mainProductImage" src="https://via.placeholder.com/600" alt="Product Image" class="main-image">
+                <div class="product-thumbnails" id="productThumbnails"></div>
+            </div>
+
+            <div class="product-details">
+                <h1 id="productTitle">Loading...</h1>
+                <div class="product-rating-summary">
+                    <div class="stars" id="productAvgStars">
+                        <i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>
+                    </div>
+                    <span id="productReviewCount">(0 reviews)</span>
+                </div>
+                
+                <div class="product-price" id="productPrice">₹0</div>
+                
+                <p class="product-description" id="productDesc">Loading product details...</p>
+
+                <div class="product-features" id="productFeatures"></div>
+
+                <div class="product-options">
+                    <div class="option-group">
+                        <div class="option-header">
+                            <label>Size</label>
+                            <button id="sizeGuideBtn" class="size-guide-btn"><i class="fas fa-ruler-combined"></i> Size Guide</button>
+                        </div>
+                        <div class="size-selector" id="sizeSelector">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="option-group">
+                        <label>Quantity</label>
+                        <div class="quantity-selector">
+                            <button class="qty-btn" id="qtyMinus">-</button>
+                            <input type="number" id="qtyInput" value="1" min="1" max="10">
+                            <button class="qty-btn" id="qtyPlus">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-actions">
+                    <button class="btn btn-primary btn-lg add-to-cart-large" id="addToCartBtn">
+                        <i class="fas fa-cart-plus"></i> Add to Cart
+                    </button>
+                    <button class="wishlist-btn-large" id="wishlistBtn" title="Save to Wishlist">
+                        <i class="far fa-heart"></i>
+                    </button>
+                </div>
+                
+                <div class="product-meta mt-4">
+                    <p><strong>Category:</strong> <span id="productCategory">...</span></p>
+                    <p><strong>Availability:</strong> <span id="productStock">In Stock</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reviews Section -->
+        <div class="reviews-section mt-5">
+            <div class="section-header">
+                <h2>Customer Reviews</h2>
+            </div>
+            
+            <div class="reviews-grid">
+                <div class="reviews-summary">
+                    <div class="rating-huge" id="avgRatingHuge">0.0</div>
+                    <div class="stars mb-2" id="avgStarsSummary">
+                        <i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>
+                    </div>
+                    <p>Based on <span id="totalReviewsCount">0</span> reviews</p>
+                    
+                    <div class="write-review-box mt-4">
+                        <h4>Share your thoughts</h4>
+                        <p>If you've used this product, share your thoughts with other customers</p>
+                        <button class="btn btn-outline mt-2" id="writeReviewBtn">Write a Review</button>
+                    </div>
+                </div>
+                
+                <div class="reviews-list">
+                    <!-- Enhanced Review Form -->
+                    <form id="reviewForm" class="review-form hidden" enctype="multipart/form-data">
+                        <h4>Write a Review</h4>
+                        <div class="form-group">
+                            <label>Rating</label>
+                            <div class="star-rating-input">
+                                <i class="far fa-star" data-rating="1"></i>
+                                <i class="far fa-star" data-rating="2"></i>
+                                <i class="far fa-star" data-rating="3"></i>
+                                <i class="far fa-star" data-rating="4"></i>
+                                <i class="far fa-star" data-rating="5"></i>
+                                <input type="hidden" id="reviewRating" value="0" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Comment</label>
+                            <textarea id="reviewComment" class="form-control" rows="4" required placeholder="What did you like or dislike?"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Upload Images (Optional)</label>
+                            <input type="file" id="reviewImages" class="form-control" accept="image/jpeg,image/png,image/webp" multiple>
+                            <small class="text-muted">Upload up to 5 images of your product</small>
+                            <div class="image-preview" id="reviewImagePreview"></div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Submit Review</button>
+                            <button type="button" class="btn btn-outline" id="cancelReviewBtn">Cancel</button>
+                        </div>
+                    </form>
+
+                    <!-- Reviews Container -->
+                    <div id="reviewsContainer">
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i> Loading reviews...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Size Guide Modal -->
+    <div class="modal" id="sizeGuideModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeSizeGuide">&times;</span>
+            <h2>Interactive Size Guide</h2>
+            <p>Enter your measurements to find the perfect fit.</p>
+            
+            <div class="size-guide-form">
+                <div class="form-group">
+                    <label>Height (cm)</label>
+                    <input type="number" id="sgHeight" class="form-control" placeholder="e.g. 175" required>
+                </div>
+                <div class="form-group">
+                    <label>Weight (kg)</label>
+                    <input type="number" id="sgWeight" class="form-control" placeholder="e.g. 70" required>
+                </div>
+                <div class="form-group">
+                    <label>Fit Preference</label>
+                    <select id="sgFit" class="form-control">
+                        <option value="tight">Tight</option>
+                        <option value="regular" selected>Regular</option>
+                        <option value="loose">Loose (Oversized)</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-full mt-3" id="calcSizeBtn">Recommend Size</button>
+                
+                <div class="size-result hidden" id="sizeResult">
+                    <h4>Recommended Size:</h4>
+                    <div class="recommended-badge" id="recommendedSizeBadge">M</div>
+                    <p class="text-center mt-2" id="sizeReasoning">Based on your height and weight for a regular fit.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop" id="sizeGuideBackdrop"></div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <i class="fas fa-tshirt"></i>
+                        <span>DYD-Cloths</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+                    </div>
+                    <p>Quality custom t-shirts delivered to your doorstep.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 DYD-Cloths - Design your Dream Cloths. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Your Cart</h3>
+            <button class="close-cart">&times;</button>
+        </div>
+        <div class="cart-items"></div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total:</span>
+                <span class="total-amount">₹0</span>
+            </div>
+            <button class="btn btn-primary btn-full checkout-btn">Checkout</button>
+        </div>
+    </div>
+    <div class="cart-overlay"></div>
+
+    <script src="assets/js/core/utils.js"></script>
+    <script src="assets/js/core/api.js"></script>
+    <script src="assets/js/core/auth.js"></script>
+    <script src="assets/js/core/cart.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/product.js?v=20260515-1"></script>
+    <script src="assets/js/search.js"></script>
+</body>
+</html>

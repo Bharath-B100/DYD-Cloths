@@ -1,0 +1,57 @@
+.catalog-page .page-header {
+    padding: 8rem 0 3.5rem;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(249, 115, 22, 0.1));
+}
+
+.catalog-intro {
+    max-width: 760px;
+}
+
+.catalog-intro p {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
+.catalog-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 2rem 0;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.catalog-toolbar strong {
+    color: var(--primary);
+}
+
+.catalog-page .products-grid {
+    margin-bottom: 4rem;
+}
+
+.empty-state,
+.error-state,
+.loading-state {
+    grid-column: 1 / -1;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.empty-state i,
+.error-state i,
+.loading-state i {
+    display: block;
+    margin-bottom: 1rem;
+    color: var(--primary);
+    font-size: 2rem;
+}
+
+@media (max-width: 640px) {
+    .catalog-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

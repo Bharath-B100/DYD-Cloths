@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop - DYD-Cloths</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/shop.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+</head>
+<body class="shop-page">
+    <nav class="navbar">
+
+        <div class="nav-container">
+            <!-- Logo -->
+            <a href="index.html" class="logo">
+                <i class="fas fa-tshirt logo-icon"></i>
+                <span>DYD-Cloths</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+            </a>
+
+            <div class="search-wrapper">
+                <form class="site-search" id="siteSearch" action="shop.html" method="get">
+                    <i class="fas fa-search"></i>
+                    <input type="search" id="searchInput" name="search" 
+                           placeholder="Search T-shirts, polos, caps and bags..." 
+                           autocomplete="off">
+                    <div class="search-suggestions" id="searchSuggestions"></div>
+                </form>
+            </div>
+
+            <!-- Mobile Menu Toggle -->
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <!-- Navigation Links -->
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="shop.html" class="active">Shop</a></li>
+                <li><a href="studio.html">Design Studio</a></li>
+                
+                <!-- Auth Links (shown on mobile) -->
+                <div class="auth-buttons mobile-auth">
+                    <a href="login.html" class="auth-link">Sign In</a>
+                </div>
+            </ul>
+
+            <!-- Desktop Auth & Cart -->
+            <div class="nav-right">
+                <div class="auth-buttons desktop-auth">
+                    <a href="login.html" class="auth-link">Sign In</a>
+                </div>
+                
+                <!-- Cart Icon -->
+                <div class="cart-icon" id="cartIcon">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count">0</span>
+                </div>
+            </div>
+        </div>
+
+    </nav>
+
+    <section class="page-header shop-hero">
+        <div class="container">
+            <h1>Our <span class="highlight">Collection</span></h1>
+            <p>Premium quality custom t-shirts for every occasion</p>
+        </div>
+    </section>
+
+    <div class="shop-container">
+        <aside class="filters-sidebar">
+            <div class="filter-section">
+                <h3>Storefront Categories</h3>
+                <div class="filter-options">
+                    <label class="filter-option"><input type="checkbox" name="productType" value="men"> Men's T-Shirts</label>
+                    <label class="filter-option"><input type="checkbox" name="productType" value="women"> Women's T-Shirts</label>
+                    <label class="filter-option"><input type="checkbox" name="productType" value="kids"> Kids' T-Shirts</label>
+                    <label class="filter-option"><input type="checkbox" name="productType" value="performance"> Performance Tees</label>
+                    <label class="filter-option"><input type="checkbox" name="productType" value="designing"> Start Designing</label>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>Style</h3>
+                <div class="filter-options">
+                    <label class="filter-option"><input type="checkbox" name="category" value="graphic"> Graphic</label>
+                    <label class="filter-option"><input type="checkbox" name="category" value="plain"> Plain</label>
+                    <label class="filter-option"><input type="checkbox" name="category" value="sports"> Sports</label>
+                    <label class="filter-option"><input type="checkbox" name="category" value="custom"> Custom</label>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h3>Price Range</h3>
+                <div class="filter-options">
+                    <label class="filter-option"><input type="radio" name="price" value="all" checked> All Prices</label>
+                    <label class="filter-option"><input type="radio" name="price" value="under-20"> Under ₹1,700</label>
+                    <label class="filter-option"><input type="radio" name="price" value="20-30">₹1,700 - ₹2,500</label>
+                    <label class="filter-option"><input type="radio" name="price" value="over-30"> Over ₹2,500</label>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-full" id="applyFilters">Apply Filters</button>
+        </aside>
+
+        <main class="shop-content">
+            <div class="shop-header">
+                <p><span id="productCount" class="count-badge">0</span> Products found</p>
+                <div class="sort-wrapper">
+                    <label>Sort By:</label>
+                    <select class="sort-select" id="sortSelect">
+                        <option value="new">Newest First</option>
+                        <option value="low">Price: Low to High</option>
+                        <option value="high">Price: High to Low</option>
+                        <option value="popular">Most Popular</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="products-grid" id="shopProducts">
+                <!-- Products will be loaded here -->
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Loading products...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <i class="fas fa-tshirt"></i>
+                        <span>DYD-Cloths</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+                    </div>
+                    <p>Quality custom t-shirts delivered to your doorstep.</p>
+                </div>
+                <!-- Add footer links here if needed -->
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 DYD-Cloths - Design your Dream Cloths. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Your Cart</h3>
+            <button class="close-cart">&times;</button>
+        </div>
+        <div class="cart-items"></div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total:</span>
+                <span class="total-amount">₹0</span>
+            </div>
+            <button class="btn btn-primary btn-full checkout-btn">Checkout</button>
+        </div>
+    </div>
+    <div class="cart-overlay"></div>
+
+    <script src="assets/js/core/utils.js"></script>
+    <script src="assets/js/core/api.js"></script>
+    <script src="assets/js/core/auth.js"></script>
+    <script src="assets/js/core/cart.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/shop.js?v=20260515-1"></script>
+    <script src="assets/js/search.js"></script>
+</body>
+</html>

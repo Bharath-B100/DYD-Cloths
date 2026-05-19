@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - DYD-Cloths</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.css">
+</head>
+<body class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="admin-logo">
+                <i class="fas fa-tshirt"></i>
+                <span>DYD-Cloths</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+            </div>
+            <p style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 5px;">Admin Dashboard</p>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-group">
+                <p class="nav-group-title">Main</p>
+                <a href="#" class="nav-link active" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-link" data-page="orders">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span>Orders</span>
+                    <span class="nav-badge" id="orderBadge">0</span>
+                </a>
+                <a href="#" class="nav-link" data-page="products">
+                    <i class="fas fa-tshirt"></i>
+                    <span>Products</span>
+                </a>
+                <a href="#" class="nav-link" data-page="customers">
+                    <i class="fas fa-users"></i>
+                    <span>Customers</span>
+                </a>
+                <a href="#" class="nav-link" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </div>
+
+            <div class="nav-group">
+                <p class="nav-group-title">System</p>
+                <a href="#" class="nav-link" data-page="analytics">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-store"></i>
+                    <span>View Store</span>
+                </a>
+                <a href="#" id="logoutBtn" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="admin-main">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="header-title" id="pageTitle">Dashboard</h1>
+            </div>
+            
+            <div class="header-actions">
+                <div class="notification-wrapper">
+                    <button class="notification-btn" id="notificationBtn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationCount">0</span>
+                    </button>
+                    <div class="notification-dropdown" id="notificationDropdown">
+                        <div class="dropdown-header">
+                            <h3>Notifications</h3>
+                            <button id="markAllRead">Mark all read</button>
+                        </div>
+                        <div class="notification-list" id="notificationList">
+                            <div class="empty-notifications">No new notifications</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-menu" id="userMenu">
+                    <div class="user-avatar" id="userAvatar">A</div>
+                    <div class="user-info">
+                        <span class="user-name" id="userName">Admin User</span>
+                        <span class="user-role">Administrator</span>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Content Area -->
+        <div class="admin-content" id="contentArea">
+            <div class="admin-loading" id="loadingIndicator">
+                <i class="fas fa-spinner"></i>
+                <p>Loading Dashboard...</p>
+            </div>
+        </div>
+
+        <!-- Settings Template (Hidden) -->
+        <template id="settingsTemplate">
+            <div class="settings-container">
+                <div class="settings-header">
+                    <h2>Site Settings</h2>
+                    <p>Manage website content, branding, and contact information.</p>
+                    <button class="btn btn-primary" id="saveAllSettings">
+                        <i class="fas fa-save"></i> Save All Changes
+                    </button>
+                </div>
+
+                <div class="settings-tabs">
+                    <button class="s-tab-btn active" data-category="branding">Branding</button>
+                    <button class="s-tab-btn" data-category="homepage">Homepage</button>
+                    <button class="s-tab-btn" data-category="contact">Contact</button>
+                    <button class="s-tab-btn" data-category="social">Social</button>
+                </div>
+
+                <div class="settings-sections" id="settingsSections">
+                    <!-- Settings will be populated here -->
+                </div>
+            </div>
+        </template>
+    </main>
+    
+    <!-- Modals -->
+    <div class="admin-modal" id="orderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Order Details</h3>
+                <button class="modal-close" id="closeOrderModal">&times;</button>
+            </div>
+            <div class="modal-body" id="orderModalBody">
+                <!-- Order details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="printOrderBtn">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <button class="btn btn-primary" id="closeModalBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox for Design Preview -->
+    <div class="design-lightbox" id="designLightbox">
+        <button class="lightbox-close-btn" id="closeLightboxBtn">&times;</button>
+        <div class="lightbox-content">
+            <h3 class="lightbox-title" id="lightboxTitle">Custom Design Preview</h3>
+            <div class="lightbox-shirt-preview">
+                <img id="lightboxImage" src="" alt="Custom Design">
+            </div>
+            <div class="lightbox-info" id="lightboxInfo">
+                Fabric: Premium Cotton | Size: L | Quantity: 2
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="admin-modal" id="productModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="productModalTitle">Add New Product</h3>
+                <button class="modal-close" id="closeProductModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <div class="form-section">
+                        <h4 class="form-section-title">Basic Information</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="productName">Product Name *</label>
+                                <input type="text" id="productName" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productPrice">Price (INR) *</label>
+                                <input type="number" id="productPrice" class="form-control" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="productCategory">Style Category *</label>
+                                <select id="productCategory" class="form-control" required>
+                                    <option value="">Select Style</option>
+                                    <option value="graphic">Graphic</option>
+                                    <option value="plain">Plain</option>
+                                    <option value="sports">Sports</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="productStock">Stock *</label>
+                                <input type="number" id="productStock" class="form-control" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4 class="form-section-title">Storefront Categories</h4>
+                        <div class="checkbox-grid" id="productTypesGroup">
+                            <label><input type="checkbox" name="productTypes" value="men"> Men's T-Shirts</label>
+                            <label><input type="checkbox" name="productTypes" value="women"> Women's T-Shirts</label>
+                            <label><input type="checkbox" name="productTypes" value="kids"> Kids' T-Shirts</label>
+                            <label><input type="checkbox" name="productTypes" value="performance"> Performance Tees</label>
+                            <label><input type="checkbox" name="productTypes" value="designing"> Start Designing</label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4 class="form-section-title">Catalog Pages</h4>
+                        <div class="checkbox-grid" id="catalogTypesGroup">
+                            <label><input type="checkbox" name="catalogTypes" value="oversized"> Oversized T-Shirts</label>
+                            <label><input type="checkbox" name="catalogTypes" value="premium-cotton"> Premium Cotton T-Shirts</label>
+                            <label><input type="checkbox" name="catalogTypes" value="bulk-cotton"> Bulk Cotton T-Shirts</label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4 class="form-section-title">Details & Media</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="productSizes">Sizes (comma separated)</label>
+                                <input type="text" id="productSizes" class="form-control" placeholder="S, M, L, XL">
+                            </div>
+                            <div class="form-group">
+                                <label for="productColors">Colors (comma separated)</label>
+                                <input type="text" id="productColors" class="form-control" placeholder="Blue, Black, Red">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="productImageFile">Thumbnail Image *</label>
+                            <input type="file" id="productImageFile" class="form-control" accept="image/jpeg,image/png,image/webp">
+                            <small style="color: var(--text-muted); margin-top: 4px; display: block;">Main product image shown in shop cards.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="productGalleryFiles">Product Gallery Images</label>
+                            <input type="file" id="productGalleryFiles" class="form-control" accept="image/jpeg,image/png,image/webp" multiple>
+                            <small style="color: var(--text-muted); margin-top: 4px; display: block;">Upload additional product detail images.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="productImageUrl">Thumbnail Image URL</label>
+                            <input type="url" id="productImageUrl" class="form-control" placeholder="https://example.com/thumbnail.jpg">
+                        </div>
+                        <div class="form-group">
+                            <label for="productImageUrls">Gallery Image URLs</label>
+                            <textarea id="productImageUrls" class="form-control" rows="3" placeholder="Paste one image URL per line"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="productDescription">Description *</label>
+                            <textarea id="productDescription" class="form-control" rows="4" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="productFeatures">Product Features</label>
+                            <textarea id="productFeatures" class="form-control" rows="3" placeholder="Soft cotton&#10;Oversized fit&#10;Premium print"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" id="cancelProductBtn">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveProductBtn">
+                            <i class="fas fa-save"></i> Save Product
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="assets/js/core/utils.js"></script>
+    <script src="assets/js/core/api.js"></script>
+    <script src="assets/js/core/auth.js?v=20260515-2"></script>
+    <script src="assets/js/core/cart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/admin.js?v=20260516-1"></script>
+    <script src="assets/js/search.js"></script>
+</body>
+</html>
