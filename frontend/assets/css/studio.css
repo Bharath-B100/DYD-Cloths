@@ -1,22 +1,45 @@
 /* =========================================== */
-/* studio.css — Professional Design Studio     */
+/* studio.css - PROFESSIONAL DESIGN STUDIO v2 */
+/* DYD-Cloths - T-Shirt Customizer            */
 /* =========================================== */
 
-/* ---- Layout ---- */
+/* =========================================== */
+/* STUDIO PAGE LAYOUT                         */
+/* =========================================== */
+
 .studio-page {
     background: var(--bg-secondary);
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 .studio-layout {
     display: grid;
-    grid-template-columns: 260px 1fr 280px;
+    grid-template-columns: 280px 1fr 300px;
     height: calc(100vh - var(--nav-height));
     margin-top: var(--nav-height);
     overflow: hidden;
+    position: relative;
 }
 
-/* ---- Panels ---- */
+@media (max-width: 1200px) {
+    .studio-layout {
+        grid-template-columns: 260px 1fr 280px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .studio-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow: visible;
+    }
+}
+
+/* =========================================== */
+/* STUDIO PANELS                              */
+/* =========================================== */
+
 .studio-panel {
     background: var(--bg-primary);
     border-right: 1px solid var(--border-color);
@@ -24,6 +47,7 @@
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    transition: all var(--transition);
 }
 
 .studio-panel-right {
@@ -31,241 +55,321 @@
     border-left: 1px solid var(--border-color);
 }
 
+@media (max-width: 1024px) {
+    .studio-panel-left {
+        order: 2;
+        max-height: 400px;
+        border-right: none;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .studio-canvas-area {
+        order: 1;
+    }
+    
+    .studio-panel-right {
+        order: 3;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+    }
+}
+
+/* Panel Header */
 .panel-header {
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary);
     position: sticky;
     top: 0;
-    z-index: 5;
+    z-index: 10;
 }
 
 .panel-header h3 {
-    font-size: 0.95rem;
+    font-size: 0.875rem;
     font-weight: 700;
     color: var(--text-primary);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
+    margin: 0;
 }
 
 .panel-header h3 i {
     color: var(--primary);
+    font-size: 1rem;
 }
 
-/* ---- Tool Sections ---- */
+/* =========================================== */
+/* TOOL SECTIONS                              */
+/* =========================================== */
+
 .tool-section {
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border-color);
 }
 
+.tool-section:last-child {
+    border-bottom: none;
+}
+
 .tool-label {
     display: block;
-    font-size: 0.78rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.75rem;
 }
 
-/* ---- Side Toggle ---- */
+/* =========================================== */
+/* SIDE TOGGLE (FRONT/BACK)                   */
+/* =========================================== */
+
 .side-toggle {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: 0.5rem;
 }
 
 .side-btn {
-    padding: 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 0.5rem;
+    padding: 0.625rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
 }
 
-.side-btn:hover { background: var(--bg-tertiary); }
-.side-btn.active {
-    background: var(--primary);
-    color: white;
+.side-btn i {
+    font-size: 0.75rem;
+}
+
+.side-btn:hover {
+    background: var(--bg-tertiary);
     border-color: var(--primary);
 }
 
-/* ---- Color Grid ---- */
+.side-btn.active {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: transparent;
+}
+
+/* =========================================== */
+/* COLOR GRID & PICKER                        */
+/* =========================================== */
+
 .color-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
 }
 
 .color-dot {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
-    transition: all 0.15s ease;
-    box-shadow: var(--shadow-sm);
-    appearance: none;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-xs);
 }
 
-.color-dot:hover { transform: scale(1.15); }
+.color-dot:hover {
+    transform: scale(1.15);
+}
+
 .color-dot.active {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.25);
+    box-shadow: 0 0 0 2px var(--primary-100);
     transform: scale(1.1);
 }
 
 .custom-color-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.8rem;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
-    margin-top: 6px;
+}
+
+.custom-color-row label {
+    font-weight: 600;
 }
 
 .custom-color-row input[type="color"] {
-    width: 36px;
-    height: 28px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
+    width: 40px;
+    height: 32px;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
     padding: 2px;
     cursor: pointer;
+    background: var(--bg-primary);
 }
 
-/* ---- Studio Selects & Inputs ---- */
+/* =========================================== */
+/* SELECTS & INPUTS                           */
+/* =========================================== */
+
 .studio-select,
 .studio-input {
     width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-secondary);
+    padding: 0.625rem 0.75rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 0.88rem;
+    font-size: 0.8125rem;
     font-family: inherit;
-    transition: border 0.15s ease;
+    transition: all var(--transition-fast);
 }
 
 .studio-select:focus,
 .studio-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    box-shadow: 0 0 0 3px var(--primary-100);
 }
 
-/* ---- Size Grid ---- */
+/* =========================================== */
+/* SIZE GRID                                  */
+/* =========================================== */
+
 .size-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 0.5rem;
 }
 
 .size-pill {
-    min-width: 40px;
-    height: 36px;
-    padding: 0 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.size-pill:hover { background: var(--bg-tertiary); }
-.size-pill.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-}
-
-/* ---- Quantity ---- */
-.qty-control {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 4px 0;
-}
-
-.qty-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
+    min-width: 44px;
+    height: 40px;
+    padding: 0 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
 }
 
-.qty-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+.size-pill:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary);
+}
+
+.size-pill.active {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: transparent;
+}
+
+/* =========================================== */
+/* QUANTITY CONTROLS                          */
+/* =========================================== */
+
+.qty-control {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.25rem 0;
+}
+
+.qty-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 1.125rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.qty-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
 
 #qtyDisplay {
-    font-size: 1.1rem;
+    font-size: 1.125rem;
     font-weight: 700;
-    min-width: 24px;
+    min-width: 32px;
     text-align: center;
+    color: var(--text-primary);
 }
 
-/* ---- Canvas Area ---- */
+/* =========================================== */
+/* CANVAS AREA                                */
+/* =========================================== */
+
 .studio-canvas-area {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     background: var(--bg-secondary);
-    padding: 1rem;
+    padding: 1.5rem;
     overflow-y: auto;
     position: relative;
 }
 
-/* ---- Canvas Toolbar ---- */
+/* Canvas Toolbar */
 .canvas-toolbar {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 8px 12px;
-    background: var(--bg-primary);
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow-sm);
     flex-wrap: wrap;
     width: 100%;
-    max-width: 680px;
-    margin-bottom: 1rem;
+    max-width: 500px;
+    margin-bottom: 1.5rem;
+    justify-content: center;
 }
 
 .toolbar-btn {
     display: flex;
     align-items: center;
-    gap: 5px;
-    padding: 6px 10px;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
     border: 1px solid transparent;
-    border-radius: 7px;
+    border-radius: var(--radius-lg);
     background: transparent;
     color: var(--text-secondary);
-    font-size: 0.82rem;
+    font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--transition-fast);
     white-space: nowrap;
+}
+
+.toolbar-btn i {
+    font-size: 0.875rem;
 }
 
 .toolbar-btn:hover {
@@ -275,7 +379,7 @@
 }
 
 .toolbar-btn.danger:hover {
-    background: rgba(239, 68, 68, 0.08);
+    background: rgba(239, 68, 68, 0.1);
     color: var(--danger);
     border-color: rgba(239, 68, 68, 0.2);
 }
@@ -284,28 +388,32 @@
     width: 1px;
     height: 24px;
     background: var(--border-color);
-    margin: 0 4px;
+    margin: 0 0.25rem;
     flex-shrink: 0;
 }
 
-/* ---- T-Shirt Mockup ---- */
+/* =========================================== */
+/* T-SHIRT MOCKUP & CANVAS                    */
+/* =========================================== */
+
 .canvas-wrapper {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem;
+    padding: 1rem;
 }
 
 .tshirt-mockup {
     position: relative;
-    width: 400px;
-    min-height: 520px;
+    width: 380px;
+    min-height: 500px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
+/* T-Shirt Shape (CSS-only mockup) */
 .tshirt-shape {
     position: absolute;
     top: 0;
@@ -313,68 +421,132 @@
     right: 0;
     bottom: 0;
     background-color: #ffffff;
-    clip-path: polygon(24% 0, 37% 0, 42% 8%, 58% 8%, 63% 0, 76% 0, 97% 19%, 87% 37%, 79% 31%, 79% 100%, 21% 100%, 21% 31%, 13% 37%, 3% 19%);
-    transition: background-color 0.3s ease;
-    box-shadow: var(--shadow-lg);
+    clip-path: polygon(
+        24% 0%, 37% 0%, 42% 8%, 58% 8%, 63% 0%, 
+        76% 0%, 97% 19%, 87% 37%, 79% 31%, 79% 100%, 
+        21% 100%, 21% 31%, 13% 37%, 3% 19%
+    );
+    transition: background-color var(--transition);
+    box-shadow: var(--shadow-md);
 }
 
+/* Print Area Indicator */
 .print-area-indicator {
     position: absolute;
     top: 28%;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 0.6rem;
-    color: rgba(128,128,128,0.4);
+    font-size: 0.5rem;
+    color: rgba(128, 128, 128, 0.3);
     text-transform: uppercase;
     letter-spacing: 2px;
     pointer-events: none;
     user-select: none;
     z-index: 1;
+    white-space: nowrap;
 }
 
+/* Fabric.js Canvas */
 .tshirt-mockup canvas {
     position: relative;
     z-index: 2;
-    margin-top: 90px; /* Position canvas in the print area of the shirt */
-    border-radius: 4px;
+    margin-top: 85px;
+    border-radius: var(--radius-md);
+    cursor: crosshair;
 }
 
+/* Canvas Side Label */
 .canvas-side-label {
     position: absolute;
-    bottom: 8px;
-    right: 16px;
-    font-size: 0.65rem;
+    bottom: 0.5rem;
+    right: 1rem;
+    font-size: 0.6rem;
     font-weight: 800;
     letter-spacing: 3px;
     color: var(--text-muted);
     text-transform: uppercase;
+    background: var(--bg-card);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-color);
 }
 
+/* Canvas Hint */
 .canvas-hint {
-    font-size: 0.78rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     text-align: center;
-    padding: 8px;
+    padding: 0.75rem;
     display: flex;
     align-items: center;
-    gap: 6px;
     justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
 }
 
-/* ---- Right Panel: Text Properties ---- */
+.canvas-hint i {
+    color: var(--primary);
+}
+
+@media (max-width: 1024px) {
+    .tshirt-mockup {
+        width: 300px;
+        min-height: 400px;
+    }
+    
+    .tshirt-mockup canvas {
+        margin-top: 70px;
+    }
+    
+    .canvas-toolbar {
+        gap: 0.125rem;
+    }
+    
+    .toolbar-btn {
+        padding: 0.375rem 0.625rem;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .tshirt-mockup {
+        width: 260px;
+        min-height: 360px;
+    }
+    
+    .tshirt-mockup canvas {
+        margin-top: 60px;
+    }
+    
+    .toolbar-btn span {
+        display: none;
+    }
+    
+    .toolbar-btn i {
+        font-size: 1rem;
+    }
+}
+
+/* =========================================== */
+/* TEXT PROPERTIES PANEL                      */
+/* =========================================== */
+
 .range-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .studio-range {
     flex: 1;
+    height: 4px;
+    border-radius: var(--radius-full);
     accent-color: var(--primary);
 }
 
 .range-row span {
-    font-size: 0.78rem;
+    font-size: 0.7rem;
     font-weight: 700;
     color: var(--text-muted);
     min-width: 36px;
@@ -383,128 +555,167 @@
 .color-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .color-row input[type="color"] {
     width: 44px;
     height: 36px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
     padding: 2px;
     cursor: pointer;
+    background: var(--bg-primary);
 }
 
 .quick-text-colors {
     display: flex;
-    gap: 6px;
+    gap: 0.375rem;
+    flex-wrap: wrap;
 }
 
 .qtc {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 2px solid var(--border-color);
     cursor: pointer;
-    transition: transform 0.15s;
-    appearance: none;
+    transition: all var(--transition-fast);
 }
 
-.qtc:hover { transform: scale(1.2); }
+.qtc:hover {
+    transform: scale(1.15);
+    border-color: var(--primary);
+}
 
+/* Style Buttons */
 .style-btns {
     display: flex;
-    gap: 6px;
+    gap: 0.375rem;
     flex-wrap: wrap;
+    margin-top: 0.5rem;
 }
 
 .style-btn {
     width: 36px;
     height: 36px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.15s;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
 }
 
 .style-btn:hover {
     background: var(--primary);
-    color: white;
     border-color: var(--primary);
+    color: white;
 }
 
 .studio-btn-full {
     width: 100%;
-    padding: 9px;
+    padding: 0.75rem;
     background: var(--gradient-primary);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     font-weight: 700;
-    font-size: 0.88rem;
+    font-size: 0.8125rem;
     cursor: pointer;
-    transition: opacity 0.2s;
-    margin-top: 8px;
+    transition: all var(--transition);
+    margin-top: 0.75rem;
 }
 
-.studio-btn-full:hover { opacity: 0.9; }
+.studio-btn-full:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
 
-/* ---- Layers ---- */
+/* =========================================== */
+/* LAYERS PANEL                               */
+/* =========================================== */
+
 .layers-list {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    max-height: 180px;
+    gap: 0.5rem;
+    max-height: 200px;
     overflow-y: auto;
 }
 
 .no-layers-msg {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
     font-style: italic;
     text-align: center;
-    padding: 1rem 0;
+    padding: 1rem;
 }
 
 .layer-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 7px 10px;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     background: var(--bg-secondary);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all var(--transition-fast);
 }
 
-.layer-item:hover { background: var(--bg-tertiary); }
-.layer-item.active { border-color: var(--primary); background: rgba(15, 118, 110, 0.05); }
-.layer-item i { color: var(--text-muted); font-size: 0.75rem; }
-.layer-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.layer-item.active {
+    border-color: var(--primary);
+    background: var(--primary-50);
+}
+
+.layer-item i {
+    color: var(--primary);
+    font-size: 0.75rem;
+}
+
+.layer-item span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
 
 .layer-delete-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: none;
-    background: none;
+    background: transparent;
+    border-radius: var(--radius-md);
     cursor: pointer;
     color: var(--text-muted);
-    padding: 2px 5px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    transition: color 0.15s;
+    transition: all var(--transition-fast);
 }
 
-.layer-delete-btn:hover { color: var(--danger); }
+.layer-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
 
-/* ---- Price Summary ---- */
+/* =========================================== */
+/* PRICE SUMMARY PANEL                        */
+/* =========================================== */
+
 .price-summary-panel {
-    padding: 1.25rem;
+    padding: 1rem 1.25rem;
     margin-top: auto;
     border-top: 1px solid var(--border-color);
     background: var(--bg-secondary);
@@ -513,90 +724,166 @@
 .price-row-s {
     display: flex;
     justify-content: space-between;
-    font-size: 0.88rem;
+    font-size: 0.8125rem;
     color: var(--text-secondary);
-    margin-bottom: 6px;
+    margin-bottom: 0.5rem;
 }
 
 .final-s {
     font-weight: 800;
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: var(--text-primary);
-    padding-top: 8px;
+    padding-top: 0.5rem;
     border-top: 1px solid var(--border-color);
-    margin-top: 6px;
+    margin-top: 0.5rem;
 }
 
 .studio-add-cart-btn {
     width: 100%;
-    padding: 12px;
-    margin-top: 12px;
+    padding: 0.875rem;
+    margin-top: 1rem;
     background: var(--gradient-primary);
     color: white;
     border: none;
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.875rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    box-shadow: var(--shadow-md);
+    gap: 0.5rem;
 }
 
 .studio-add-cart-btn:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-    filter: brightness(1.05);
+    box-shadow: var(--shadow-md);
 }
 
 .studio-whatsapp-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 0.5rem;
     width: 100%;
-    padding: 10px;
-    margin-top: 8px;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
     background: #25d366;
     color: white;
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     text-decoration: none;
     font-weight: 700;
-    font-size: 0.85rem;
-    transition: all 0.2s;
+    font-size: 0.75rem;
+    transition: all var(--transition);
+}
+
+.studio-whatsapp-btn i {
+    font-size: 1rem;
 }
 
 .studio-whatsapp-btn:hover {
     background: #128c7e;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
 }
 
-/* ---- Responsive ---- */
-@media (max-width: 1200px) {
-    .studio-layout {
-        grid-template-columns: 220px 1fr 260px;
+/* =========================================== */
+/* IMAGE PROPERTIES                           */
+/* =========================================== */
+
+#imagePropertiesPanel {
+    display: block;
+}
+
+#imageOpacity {
+    width: 100%;
+}
+
+/* =========================================== */
+/* RESPONSIVE TOUCH OPTIMIZATIONS             */
+/* =========================================== */
+
+@media (max-width: 1024px) {
+    .size-pill {
+        min-width: 48px;
+        height: 44px;
+    }
+    
+    .qty-btn {
+        width: 44px;
+        height: 44px;
+    }
+    
+    .color-dot {
+        width: 38px;
+        height: 38px;
+    }
+    
+    .layer-item {
+        padding: 0.625rem 0.75rem;
     }
 }
 
-@media (max-width: 900px) {
-    .studio-layout {
-        grid-template-columns: 1fr;
-        height: auto;
-        overflow: visible;
+/* =========================================== */
+/* SCROLLBAR STYLING FOR PANELS               */
+/* =========================================== */
+
+.studio-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.studio-panel::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.studio-panel::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: var(--radius-full);
+}
+
+.studio-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* =========================================== */
+/* ANIMATIONS                                 */
+/* =========================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
     }
-
-    .studio-panel,
-    .studio-canvas-area {
-        overflow: visible;
+    to {
+        opacity: 1;
     }
+}
 
-    .studio-panel-left { order: 2; }
-    .studio-canvas-area { order: 1; }
-    .studio-panel-right { order: 3; border-left: none; border-top: 1px solid var(--border-color); }
+.tool-section {
+    animation: fadeIn 0.3s ease-out;
+}
 
-    .tshirt-mockup { width: 300px; min-height: 390px; }
-    .tshirt-mockup canvas { margin-top: 68px; }
+/* =========================================== */
+/* LOADING STATE FOR CANVAS                   */
+/* =========================================== */
+
+.canvas-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    backdrop-filter: blur(10px);
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 10;
+}
+
+.canvas-loading i {
+    color: var(--primary);
+    font-size: 1.5rem;
 }

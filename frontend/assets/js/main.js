@@ -52,28 +52,34 @@ const App = {
             navRight = navbar.querySelector('.nav-right');
         }
 
-        if (navRight && !navRight.querySelector('.desktop-auth')) {
-            const existingAuthLink = navRight.querySelector('.auth-link');
-            if (existingAuthLink) {
-                const authWrapper = document.createElement('div');
-                authWrapper.className = 'auth-buttons desktop-auth';
-                existingAuthLink.insertAdjacentElement('beforebegin', authWrapper);
-                authWrapper.appendChild(existingAuthLink);
-            } else {
-                navRight.insertAdjacentHTML('afterbegin', `
-                    <div class="auth-buttons desktop-auth">
+        const isOrderConfirmation = window.location.pathname.includes('order-confirmation.html');
+
+        if (!isOrderConfirmation) {
+            if (navRight && !navRight.querySelector('.desktop-auth')) {
+                const existingAuthLink = navRight.querySelector('.auth-link');
+                if (existingAuthLink) {
+                    const authWrapper = document.createElement('div');
+                    authWrapper.className = 'auth-buttons desktop-auth';
+                    existingAuthLink.insertAdjacentElement('beforebegin', authWrapper);
+                    authWrapper.appendChild(existingAuthLink);
+                } else {
+                    navRight.insertAdjacentHTML('afterbegin', `
+                        <div class="auth-buttons desktop-auth">
+                            <a href="login.html" class="auth-link"><i class="fas fa-user"></i> Sign In</a>
+                        </div>
+                    `);
+                }
+            }
+
+            if (navLinks && !navLinks.querySelector('.mobile-auth')) {
+                navLinks.insertAdjacentHTML('beforeend', `
+                    <div class="auth-buttons mobile-auth">
                         <a href="login.html" class="auth-link"><i class="fas fa-user"></i> Sign In</a>
                     </div>
                 `);
             }
-        }
-
-        if (navLinks && !navLinks.querySelector('.mobile-auth')) {
-            navLinks.insertAdjacentHTML('beforeend', `
-                <div class="auth-buttons mobile-auth">
-                    <a href="login.html" class="auth-link"><i class="fas fa-user"></i> Sign In</a>
-                </div>
-            `);
+        } else {
+            document.querySelectorAll('.desktop-auth, .mobile-auth, .auth-link').forEach(el => el.remove());
         }
 
         if (navRight && !navRight.querySelector('.cart-icon')) {

@@ -131,6 +131,11 @@ const AuthManager = {
      * Update navbar UI based on auth state
      */
     updateNavbarUI: () => {
+        if (window.location.pathname.includes('order-confirmation.html')) {
+            document.querySelectorAll('.desktop-auth, .mobile-auth, .auth-link').forEach(el => el.remove());
+            return;
+        }
+
         // Update desktop/mobile auth buttons. Some pages have older navbar markup,
         // so create the wrappers if main.js has not normalized them yet.
         let desktopAuth = document.querySelector('.desktop-auth');
