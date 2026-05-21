@@ -296,6 +296,20 @@ const Admin = {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
         submitBtn.disabled = true;
 
+        let totalImages = 0;
+        if (fileInput?.files?.length) totalImages += 1;
+        else if (imageUrlInput?.value) totalImages += 1;
+        
+        if (galleryInput?.files?.length) totalImages += galleryInput.files.length;
+        if (imageUrlsInput?.value) totalImages += imageUrlsInput.value.split('\n').filter(u => u.trim()).length;
+
+        if (!Admin.editingId && totalImages < 2) {
+            Utils.showToast('Please add at least 2 images (1 thumbnail + at least 1 gallery image).', 'error');
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+            return;
+        }
+
         try {
             const formData = new FormData();
             formData.append('name', form.elements['productName']?.value || '');
@@ -423,6 +437,9 @@ const Admin = {
                                 <td class="actions">
                                     <button class="action-btn view" onclick="Admin.openOrderModal('${o._id}')" title="View Details">
                                         <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn delete" onclick="Admin.deleteOrder('${o._id}')" title="Delete Order">
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -948,6 +965,7 @@ const Admin = {
                             <th>Role</th>
                             <th>Joined</th>
                             <th>Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -959,6 +977,11 @@ const Admin = {
                                 <td><span class="role-badge role-${c.role || 'user'}">${c.role || 'user'}</span></td>
                                 <td>${Utils.formatDate(c.createdAt)}</td>
                                 <td><span class="status-badge ${c.isActive !== false ? 'status-active' : 'status-inactive'}">${c.isActive !== false ? 'Active' : 'Banned'}</span></td>
+                                <td class="actions">
+                                    <button class="action-btn delete" onclick="Admin.deleteCustomer('${c._id}')" title="Delete Customer">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
                             </tr>
                         `).join('') : '<tr><td colspan="6" class="empty-state">No customers found</td></tr>'}
                     </tbody>
@@ -1393,5 +1416,37 @@ Admin.updateNotifications = (data) => {
     } else {
         count.style.display = 'none';
         list.innerHTML = '<div class="empty-notifications">No new notifications</div>';
+    }
+};
+
+Admin.deleteOrder = async (orderId) => {
+    if (!confirm('Are you sure you want to permanently delete this order?')) return;
+    try {
+        const res = await API.delete(`/admin/orders/${orderId}`);
+        if (res.success) {
+            Utils.showToast('Order deleted successfully', 'success');
+            Admin.renderOrders();
+            Admin.syncBadges();
+        } else {
+            throw new Error(res.error || 'Failed to delete order');
+        }
+    } catch (err) {
+        Utils.showToast(err.message, 'error');
+    }
+};
+
+Admin.deleteCustomer = async (customerId) => {
+    if (!confirm('Are you sure you want to permanently delete this customer?')) return;
+    try {
+        const res = await API.delete(`/admin/customers/${customerId}`);
+        if (res.success) {
+            Utils.showToast('Customer deleted successfully', 'success');
+            Admin.renderCustomers();
+            Admin.syncBadges();
+        } else {
+            throw new Error(res.error || 'Failed to delete customer');
+        }
+    } catch (err) {
+        Utils.showToast(err.message, 'error');
     }
 };

@@ -7,12 +7,18 @@ const {
     getOrders,
     getOrderById,
     updateOrderStatus,
-    trackOrder
+    trackOrder,
+    cancelOrder
 } = require('../controllers/orderController');
+
+const { protect } = require('../middleware/auth');
 
 // Public routes
 router.post('/', createOrder);
 router.get('/track', trackOrder);
+
+// Protected routes (User)
+router.put('/:id/cancel', protect, cancelOrder);
 
 // Admin routes (will add authentication middleware in Phase 5)
 router.get('/', getOrders);

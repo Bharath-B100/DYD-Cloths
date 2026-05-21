@@ -349,6 +349,10 @@ const Studio3D = {
             if (Studio3D.state.quantity < 99) { Studio3D.state.quantity++; Studio3D.updateQtyDisplay(); }
         });
 
+        // Side toggle buttons
+        document.getElementById('btnFront').addEventListener('click', () => Studio3D.setSide('front'));
+        document.getElementById('btnBack').addEventListener('click', () => Studio3D.setSide('back'));
+
         // Per-side image upload buttons
         document.getElementById('btnUploadFront').addEventListener('click', () => {
             Studio3D.setSide('front');

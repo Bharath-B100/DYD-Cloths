@@ -241,4 +241,50 @@ const trackOrder = async (req, res) => {
     }
 };
 
-module.exports = { createOrder, getOrders, getOrderById, updateOrderStatus, trackOrder };
+// @desc    Cancel order (User)
+// @route   PUT /api/orders/:id/cancel
+// @access  Private
+const cancelOrder = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id);
+        
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'Order not found' });
+        }
+        
+        // Make sure user owns the order (if not admin)
+        if (order.user && order.user.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Not authorized to cancel this order' });
+        }
+        
+        // Check if order can be cancelled
+        if (order.status !== 'pending' && order.status !== 'confirmed' && order.status !== 'processing') {
+            return res.status(400).json({ success: false, error: 'Order cannot be cancelled at this stage' });
+        }
+        
+        order.status = 'cancelled';
+        
+        // Handle refund logic for inventory if it was paid
+        if (order.paymentStatus === 'paid') {
+            order.paymentStatus = 'refunded';
+            for (const item of order.items) {
+                if (item.productId && !item.productId.startsWith('custom-') && !item.productId.startsWith('studio-')) {
+                    try {
+                        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.quantity } });
+                    } catch (error) {
+                        console.warn(`Could not restore stock for product ${item.productId}:`, error.message);
+                    }
+                }
+            }
+        }
+        
+        await order.save();
+        res.json({ success: true, message: 'Order cancelled successfully', data: order });
+        
+    } catch (error) {
+        console.error('Cancel order error:', error);
+        res.status(500).json({ success: false, error: 'Server Error' });
+    }
+};
+
+module.exports = { createOrder, getOrders, getOrderById, updateOrderStatus, trackOrder, cancelOrder };

@@ -123,6 +123,10 @@ const Profile = {
                             <button class="btn btn-outline btn-sm" onclick="Profile.trackOrder('${o.orderNumber || ''}')">
                                 <i class="fas fa-truck"></i> Track
                             </button>
+                            ${['pending', 'confirmed', 'processing'].includes(status) ? `
+                            <button class="btn btn-outline btn-sm" style="color: var(--danger); border-color: var(--danger);" onclick="Profile.cancelOrder('${orderId}')">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>` : ''}
                         </div>
                     </div>
                 </div>
@@ -204,6 +208,21 @@ const Profile = {
             return;
         }
         window.location.href = `track-order.html?orderNumber=${orderNum}`;
+    },
+
+    cancelOrder: async (orderId) => {
+        if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) return;
+        try {
+            const res = await API.put(`/orders/${orderId}/cancel`);
+            if (res.success) {
+                Utils.showToast('Order cancelled successfully', 'success');
+                Profile.loadOrders(); // Refresh list
+            } else {
+                throw new Error(res.error || 'Failed to cancel order');
+            }
+        } catch (error) {
+            Utils.showToast(error.message, 'error');
+        }
     },
 
     setupSettings: () => {

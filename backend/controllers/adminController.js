@@ -265,6 +265,26 @@ const updatePaymentStatus = async (req, res) => {
 };
 
 // ======================
+// @desc    Delete order
+// @route   DELETE /api/admin/orders/:id
+// @access  Private/Admin
+const deleteOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const order = await Order.findByIdAndDelete(id);
+        
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'Order not found' });
+        }
+        
+        res.status(200).json({ success: true, message: 'Order deleted successfully' });
+        
+    } catch (error) {
+        console.error('Delete order error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
 // PRODUCT MANAGEMENT
 // ======================
 
@@ -489,6 +509,27 @@ const updateCustomerStatus = async (req, res) => {
 };
 
 // ======================
+// @desc    Delete customer
+// @route   DELETE /api/admin/customers/:id
+// @access  Private/Admin
+const deleteCustomer = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const customer = await User.findById(id);
+        
+        if (!customer || customer.role !== 'customer') {
+            return res.status(404).json({ success: false, error: 'Customer not found' });
+        }
+        
+        await User.findByIdAndDelete(id);
+        res.status(200).json({ success: true, message: 'Customer deleted successfully' });
+        
+    } catch (error) {
+        console.error('Delete customer error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
 // ANALYTICS & REPORTS
 // ======================
 
@@ -658,6 +699,7 @@ module.exports = {
     getAllOrders,
     updateOrderStatus,
     updatePaymentStatus,
+    deleteOrder,
     createProduct,
     updateProduct,
     deleteProduct,
@@ -665,6 +707,7 @@ module.exports = {
     getAllCustomers,
     getCustomerDetails,
     updateCustomerStatus,
+    deleteCustomer,
     getSalesAnalytics,
     getProductAnalytics,
     exportData

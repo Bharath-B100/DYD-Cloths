@@ -10,6 +10,7 @@ const {
     getAllOrders,
     updateOrderStatus,
     updatePaymentStatus,
+    deleteOrder,
     
     // Products
     createProduct,
@@ -21,6 +22,7 @@ const {
     getAllCustomers,
     getCustomerDetails,
     updateCustomerStatus,
+    deleteCustomer,
     
     // Analytics
     getSalesAnalytics,
@@ -51,6 +53,7 @@ router.get('/dashboard', getDashboardStats);
 router.get('/orders', getAllOrders);
 router.put('/orders/:id/status', updateOrderStatus);
 router.put('/orders/:id/payment-status', updatePaymentStatus);
+router.delete('/orders/:id', deleteOrder);
 
 // ======================
 // PRODUCT MANAGEMENT
@@ -72,6 +75,7 @@ router.delete('/products/:id', deleteProduct);
 router.get('/customers', getAllCustomers);
 router.get('/customers/:id', getCustomerDetails);
 router.put('/customers/:id/status', updateCustomerStatus);
+router.delete('/customers/:id', deleteCustomer);
 
 // ======================
 // REVIEW MANAGEMENT
