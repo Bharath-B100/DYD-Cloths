@@ -696,11 +696,18 @@ const Admin = {
                                                 depthTest: true,
                                                 depthWrite: false,
                                                 polygonOffset: true,
-                                                polygonOffsetFactor: -4,
-                                                side: THREE.DoubleSide
+                                                polygonOffsetFactor: -10,
+                                                polygonOffsetUnits: -10,
+                                                wireframe: false
                                             });
+                                            let target = targetMesh;
+                                            if (d.targetMeshName) {
+                                                model.traverse(child => {
+                                                    if (child.isMesh && child.name === d.targetMeshName) target = child;
+                                                });
+                                            }
                                             const geom = new DecalGeometry(
-                                                targetMesh,
+                                                target,
                                                 new THREE.Vector3().fromArray(d.position),
                                                 new THREE.Euler().fromArray(d.orientation),
                                                 new THREE.Vector3().fromArray(d.scale)

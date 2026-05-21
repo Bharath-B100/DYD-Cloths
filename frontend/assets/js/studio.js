@@ -20,7 +20,8 @@ const Studio3D = {
     currentTextureSrc: null,
     currentTextureText: null,
     currentDecalMesh: null,
-    decalScale: new THREE.Vector3(0.3, 0.3, 0.3), // Initial size of decal
+    decalBaseScale: new THREE.Vector3(0.3, 0.3, 0.1),
+    decalScale: new THREE.Vector3(0.3, 0.3, 0.1), // Initial size of decal
     
     raycaster: new THREE.Raycaster(),
     mouse: new THREE.Vector2(),
@@ -214,9 +215,9 @@ const Studio3D = {
             depthTest: true,
             depthWrite: false,
             polygonOffset: true,
-            polygonOffsetFactor: -4, // Ensure decal is rendered on top of the shirt
-            wireframe: false,
-            side: THREE.DoubleSide
+            polygonOffsetFactor: -10, // Pull decal forward to prevent z-fighting
+            polygonOffsetUnits: -10,
+            wireframe: false
         });
 
         const decalMesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
@@ -268,6 +269,7 @@ const Studio3D = {
             configItem.position = position.toArray();
             configItem.orientation = orientation.toArray();
             configItem.scale = Studio3D.decalScale.toArray();
+            configItem.targetMeshName = intersectedMesh.name;
         }
     },
 
@@ -352,8 +354,14 @@ const Studio3D = {
             
             sizeSlider.addEventListener('input', (e) => {
                 sizeValue.textContent = e.target.value + '%';
-                const scaleVal = e.target.value / 100; // 0.1 to 1.0
-                Studio3D.decalScale.set(scaleVal, scaleVal, scaleVal);
+                const scaleVal = e.target.value / 30; // Assuming 30 is the default base 1.0 multiplier
+                
+                // Preserve aspect ratio and keep projector Z depth constant
+                Studio3D.decalScale.set(
+                    Studio3D.decalBaseScale.x * scaleVal, 
+                    Studio3D.decalBaseScale.y * scaleVal, 
+                    Studio3D.decalBaseScale.z
+                );
                 
                 // Update current active decal if any
                 if (Studio3D.currentDecalMesh && Studio3D.tshirtMesh) {
@@ -392,11 +400,14 @@ const Studio3D = {
                 const texture = new THREE.CanvasTexture(canvas);
                 texture.colorSpace = THREE.SRGBColorSpace;
                 
+                // set decal scale
+                const aspect = canvas.width / canvas.height;
+                Studio3D.decalBaseScale.set(0.3 * aspect, 0.3, 0.1);
+                Studio3D.decalScale.copy(Studio3D.decalBaseScale); // Reset scale
+                
                 Studio3D.currentTexture = texture;
                 Studio3D.currentTextureSrc = canvas.toDataURL('image/png');
                 Studio3D.currentTextureText = text;
-                
-                Studio3D.decalScale.set(0.3 * (1024/256), 0.3, 0.3);
                 
                 document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your text. Drag to move it.';
             });
@@ -490,9 +501,9 @@ const Studio3D = {
             const textureLoader = new THREE.TextureLoader();
             textureLoader.load(ev.target.result, (texture) => {
                 texture.colorSpace = THREE.SRGBColorSpace;
-                // Add aspect ratio to decal scale based on image dimensions
                 const aspect = texture.image.width / texture.image.height;
-                Studio3D.decalScale.set(0.3 * aspect, 0.3, 0.3); // Adjust base scale
+                Studio3D.decalBaseScale.set(0.3 * aspect, 0.3, 0.1);
+                Studio3D.decalScale.copy(Studio3D.decalBaseScale); // Reset scale
                 
                 Studio3D.currentTexture = texture;
                 Studio3D.currentTextureSrc = ev.target.result;
