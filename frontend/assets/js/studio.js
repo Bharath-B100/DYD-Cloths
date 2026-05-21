@@ -168,7 +168,7 @@ const Studio3D = {
 
         // If not dragging an existing decal and we have a new texture, try placing it
         if (Studio3D.currentTexture) {
-            const shirtIntersects = Studio3D.raycaster.intersectObject(Studio3D.tshirtMesh);
+            const shirtIntersects = Studio3D.raycaster.intersectObjects(Studio3D.tshirtMeshes);
             if (shirtIntersects.length > 0) {
                 Studio3D.placeDecal(shirtIntersects[0]);
                 // Set as active decal for properties (like scale)
@@ -184,7 +184,7 @@ const Studio3D = {
 
         // Update raycaster to new mouse position
         Studio3D.updateRaycaster(e);
-        const shirtIntersects = Studio3D.raycaster.intersectObject(Studio3D.tshirtMesh);
+        const shirtIntersects = Studio3D.raycaster.intersectObjects(Studio3D.tshirtMeshes);
 
         if (shirtIntersects.length > 0) {
             // Move the decal by completely re-generating its geometry at the new spot
@@ -238,21 +238,22 @@ const Studio3D = {
 
     updateDecalPosition: (decalMesh, intersect) => {
         const position = intersect.point;
+        const intersectedMesh = intersect.object;
         // Orient the decal towards the normal of the surface
         const normal = intersect.face.normal.clone();
-        normal.transformDirection(Studio3D.tshirtMesh.matrixWorld);
+        normal.transformDirection(intersectedMesh.matrixWorld);
         
         const orientation = new THREE.Euler();
         const dummy = new THREE.Object3D();
         dummy.position.copy(position);
+        
+        // Sometimes normals can point inward depending on the model
+        // So we just orient the dummy properly
         dummy.lookAt(position.clone().add(normal));
         orientation.copy(dummy.rotation);
-        
-        // Adjust orientation slightly so it aligns upright with the model
-        // orientation.z = Math.PI;
 
         const decalGeometry = new DecalGeometry(
-            Studio3D.tshirtMesh,
+            intersectedMesh,
             position,
             orientation,
             Studio3D.decalScale
