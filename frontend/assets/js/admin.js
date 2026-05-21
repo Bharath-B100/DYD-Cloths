@@ -472,8 +472,8 @@ const Admin = {
                         </p>
                         ${isCustom ? `
                             <div class="custom-preview-action">
-                                <button class="custom-preview-btn" onclick="Admin.openDesignLightbox('${item.image.replace(/'/g, "\\'")}', '${item.name.replace(/'/g, "\\'")}', 'Fabric/Color: ${item.color.replace(/'/g, "\\'")} | Size: ${item.size}')">
-                                    <i class="fas fa-search-plus"></i> View High-Res Design Print
+                                <button class="custom-preview-btn" onclick="Admin.openDesignLightbox('${order._id}', ${order.items.indexOf(item)})">
+                                    <i class="fas fa-search-plus"></i> View Design Options
                                 </button>
                             </div>
                         ` : ''}
@@ -558,7 +558,12 @@ const Admin = {
         modal.classList.add('active');
     },
 
-    openDesignLightbox: (imageSrc, title, infoText) => {
+    openDesignLightbox: (orderId, itemIndex) => {
+        const order = Admin.orders?.find(o => o._id === orderId);
+        if (!order) return;
+        const item = order.items[itemIndex];
+        if (!item) return;
+
         const lightbox = document.getElementById('designLightbox');
         const img = document.getElementById('lightboxImage');
         const titleEl = document.getElementById('lightboxTitle');
@@ -566,11 +571,170 @@ const Admin = {
 
         if (!lightbox || !img) return;
 
-        img.src = imageSrc;
-        if (titleEl) titleEl.textContent = title;
-        if (infoEl) infoEl.textContent = infoText;
+        img.src = item.image;
+        if (titleEl) titleEl.textContent = item.name;
+        if (infoEl) infoEl.textContent = `Fabric/Color: ${item.color} | Size: ${item.size}`;
+
+        const btn3D = document.getElementById('btnView3D');
+        const btn2D = document.getElementById('btnView2D');
+        const btnDownload = document.getElementById('btnDownloadAssets');
+        const view2D = document.getElementById('lightbox2DPreview');
+        const view3D = document.getElementById('lightbox3DPreview');
+        
+        if(btn2D) btn2D.classList.add('active');
+        if(btn3D) btn3D.classList.remove('active');
+        if(view2D) view2D.style.display = 'block';
+        if(view3D) view3D.style.display = 'none';
+
+        if (item.customDesign) {
+            if(btn3D) btn3D.style.display = 'inline-block';
+            if(btnDownload) {
+                btnDownload.style.display = 'inline-block';
+                btnDownload.onclick = () => Admin.downloadAssets(item.customDesign);
+            }
+            if(btn3D) {
+                btn3D.onclick = () => {
+                    btn3D.classList.add('active');
+                    btn2D.classList.remove('active');
+                    view2D.style.display = 'none';
+                    view3D.style.display = 'block';
+                    Admin.render3DPreview(item.customDesign, view3D);
+                };
+            }
+            if(btn2D) {
+                btn2D.onclick = () => {
+                    btn2D.classList.add('active');
+                    btn3D.classList.remove('active');
+                    view2D.style.display = 'block';
+                    view3D.style.display = 'none';
+                };
+            }
+        } else {
+            if(btn3D) btn3D.style.display = 'none';
+            if(btnDownload) btnDownload.style.display = 'none';
+        }
 
         lightbox.classList.add('active');
+    },
+
+    downloadAssets: (customDesign) => {
+        if (!customDesign || !customDesign.decals) return;
+        customDesign.decals.forEach((decal, index) => {
+            if (decal.textureSrc) {
+                const a = document.createElement('a');
+                a.href = decal.textureSrc;
+                a.download = `custom-design-asset-${index + 1}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        });
+    },
+
+    render3DPreview: (config, container) => {
+        if (container.querySelector('canvas')) return;
+
+        import('three').then(THREE => {
+            import('three/addons/controls/OrbitControls.js').then(({ OrbitControls }) => {
+                import('three/addons/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
+                    import('three/addons/geometries/DecalGeometry.js').then(({ DecalGeometry }) => {
+                        
+                        const scene = new THREE.Scene();
+                        scene.background = new THREE.Color(0xf5f5f5);
+
+                        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+                        camera.position.set(0, 0, 3);
+
+                        const renderer = new THREE.WebGLRenderer({ antialias: true });
+                        renderer.setSize(container.clientWidth, container.clientHeight);
+                        renderer.outputEncoding = THREE.sRGBEncoding;
+                        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                        container.appendChild(renderer.domElement);
+
+                        const controls = new OrbitControls(camera, renderer.domElement);
+                        controls.enableDamping = true;
+
+                        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+                        const dl1 = new THREE.DirectionalLight(0xffffff, 0.8);
+                        dl1.position.set(5, 5, 5);
+                        scene.add(dl1);
+                        const dl2 = new THREE.DirectionalLight(0xffffff, 0.4);
+                        dl2.position.set(-5, 5, 5);
+                        scene.add(dl2);
+
+                        const modelContainer = new THREE.Group();
+                        scene.add(modelContainer);
+                        modelContainer.position.set(0, -0.4, 0);
+
+                        const loader = new GLTFLoader();
+                        loader.load('assets/oversized_t-shirt.glb', (gltf) => {
+                            const model = gltf.scene;
+                            model.scale.set(1.5, 1.5, 1.5);
+                            let targetMesh = null;
+                            
+                            model.traverse((child) => {
+                                if (child.isMesh) {
+                                    if (!targetMesh) targetMesh = child;
+                                    child.material = child.material.clone();
+                                    if (config.shirtColor) {
+                                        child.material.color.setHex(parseInt(config.shirtColor.replace('#', '0x')));
+                                    }
+                                    child.material.side = THREE.DoubleSide;
+                                }
+                            });
+                            modelContainer.add(model);
+
+                            if (targetMesh && config.decals) {
+                                const texLoader = new THREE.TextureLoader();
+                                config.decals.forEach(d => {
+                                    if (d.textureSrc) {
+                                        texLoader.load(d.textureSrc, (texture) => {
+                                            texture.colorSpace = THREE.SRGBColorSpace;
+                                            const mat = new THREE.MeshPhongMaterial({
+                                                map: texture,
+                                                transparent: true,
+                                                depthTest: true,
+                                                depthWrite: false,
+                                                polygonOffset: true,
+                                                polygonOffsetFactor: -4,
+                                                side: THREE.DoubleSide
+                                            });
+                                            const geom = new DecalGeometry(
+                                                targetMesh,
+                                                new THREE.Vector3().fromArray(d.position),
+                                                new THREE.Euler().fromArray(d.orientation),
+                                                new THREE.Vector3().fromArray(d.scale)
+                                            );
+                                            const mesh = new THREE.Mesh(geom, mat);
+                                            scene.add(mesh);
+                                        });
+                                    }
+                                });
+                            }
+                        });
+
+                        renderer.setAnimationLoop(() => {
+                            controls.update();
+                            renderer.render(scene, camera);
+                        });
+
+                        const resizeObserver = new ResizeObserver(() => {
+                            if(!container.clientWidth) return;
+                            camera.aspect = container.clientWidth / container.clientHeight;
+                            camera.updateProjectionMatrix();
+                            renderer.setSize(container.clientWidth, container.clientHeight);
+                        });
+                        resizeObserver.observe(container);
+
+                        document.getElementById('closeLightboxBtn').addEventListener('click', () => {
+                            renderer.setAnimationLoop(null);
+                            container.innerHTML = '';
+                            resizeObserver.disconnect();
+                        }, { once: true });
+                    });
+                });
+            });
+        });
     },
 
     updateOrderStatus: async (id, status) => {

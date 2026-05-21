@@ -11,9 +11,14 @@ const Studio3D = {
     renderer: null,
     controls: null,
     tshirtMesh: null,
+    tshirtMeshes: [],
+    modelContainer: null,
     decals: [],
+    customDesignConfig: { decals: [] },
     
     currentTexture: null,
+    currentTextureSrc: null,
+    currentTextureText: null,
     currentDecalMesh: null,
     decalScale: new THREE.Vector3(0.3, 0.3, 0.3), // Initial size of decal
     
@@ -52,7 +57,7 @@ const Studio3D = {
 
         // Camera Setup
         Studio3D.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-        Studio3D.camera.position.set(0, 0.5, 3);
+        Studio3D.camera.position.set(0, 0, 3);
 
         // Renderer Setup
         Studio3D.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -80,6 +85,11 @@ const Studio3D = {
         dirLight2.position.set(-5, 5, 5);
         Studio3D.scene.add(dirLight2);
 
+        // Container for model to allow rotation
+        Studio3D.modelContainer = new THREE.Group();
+        Studio3D.scene.add(Studio3D.modelContainer);
+        Studio3D.modelContainer.position.set(0, -0.4, 0);
+
         // Load Model
         const loader = new GLTFLoader();
         loader.load(
@@ -89,20 +99,23 @@ const Studio3D = {
                 
                 // Adjust model size and position
                 model.scale.set(1.5, 1.5, 1.5);
-                model.position.set(0, -1, 0);
+                model.position.set(0, 0, 0);
 
                 // Find the main mesh to apply decals to
                 model.traverse((child) => {
                     if (child.isMesh) {
-                        Studio3D.tshirtMesh = child;
+                        Studio3D.tshirtMeshes.push(child);
+                        if (!Studio3D.tshirtMesh) Studio3D.tshirtMesh = child;
+                        
                         // Clone the material so we can change its color freely
                         child.material = child.material.clone();
                         child.material.color.setHex(0xffffff);
                         child.material.roughness = 0.8;
+                        child.material.side = THREE.DoubleSide;
                     }
                 });
 
-                Studio3D.scene.add(model);
+                Studio3D.modelContainer.add(model);
                 document.getElementById('loadingOverlay').style.display = 'none';
             },
             (xhr) => {
@@ -202,18 +215,25 @@ const Studio3D = {
             depthWrite: false,
             polygonOffset: true,
             polygonOffsetFactor: -4, // Ensure decal is rendered on top of the shirt
-            wireframe: false
+            wireframe: false,
+            side: THREE.DoubleSide
         });
 
         const decalMesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
         Studio3D.scene.add(decalMesh);
         Studio3D.decals.push(decalMesh);
 
+        Studio3D.customDesignConfig.decals.push({
+            mesh: decalMesh,
+            textureSrc: Studio3D.currentTextureSrc,
+            textureText: Studio3D.currentTextureText,
+            position: [0, 0, 0],
+            orientation: [0, 0, 0],
+            scale: Studio3D.decalScale.toArray()
+        });
+
         Studio3D.updateDecalPosition(decalMesh, intersect);
         Studio3D.updatePrice();
-        
-        // Reset current texture so we don't stamp infinitely unless user uploads again
-        // Or keep it so they can place multiple. Let's keep it to allow dragging.
     },
 
     updateDecalPosition: (decalMesh, intersect) => {
@@ -240,6 +260,14 @@ const Studio3D = {
         
         decalMesh.geometry.dispose(); // clean up old geometry
         decalMesh.geometry = decalGeometry;
+        
+        // Update config
+        const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === decalMesh);
+        if (configItem) {
+            configItem.position = position.toArray();
+            configItem.orientation = orientation.toArray();
+            configItem.scale = Studio3D.decalScale.toArray();
+        }
     },
 
     /* ================================================
@@ -288,6 +316,7 @@ const Studio3D = {
             if (Studio3D.currentDecalMesh) {
                 Studio3D.scene.remove(Studio3D.currentDecalMesh);
                 Studio3D.decals = Studio3D.decals.filter(d => d !== Studio3D.currentDecalMesh);
+                Studio3D.customDesignConfig.decals = Studio3D.customDesignConfig.decals.filter(d => d.mesh !== Studio3D.currentDecalMesh);
                 Studio3D.currentDecalMesh = null;
                 Studio3D.updatePrice();
             }
@@ -298,8 +327,11 @@ const Studio3D = {
             if (confirm('Clear all images from the T-shirt?')) {
                 Studio3D.decals.forEach(d => Studio3D.scene.remove(d));
                 Studio3D.decals = [];
+                Studio3D.customDesignConfig.decals = [];
                 Studio3D.currentDecalMesh = null;
                 Studio3D.currentTexture = null;
+                Studio3D.currentTextureSrc = null;
+                Studio3D.currentTextureText = null;
                 Studio3D.updatePrice();
             }
         });
@@ -332,13 +364,118 @@ const Studio3D = {
                 }
             });
         }
+
+        // Add Text logic
+        const btnApplyText = document.getElementById('btnApplyText');
+        if (btnApplyText) {
+            btnApplyText.addEventListener('click', () => {
+                const text = document.getElementById('textInput').value;
+                if (!text) return;
+                
+                const fontFam = document.getElementById('fontFamily').value;
+                const fontColor = document.getElementById('textColorPicker').value;
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 1024;
+                canvas.height = 256;
+                
+                ctx.fillStyle = fontColor;
+                ctx.font = `bold 120px "${fontFam}"`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, 512, 128);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.colorSpace = THREE.SRGBColorSpace;
+                
+                Studio3D.currentTexture = texture;
+                Studio3D.currentTextureSrc = canvas.toDataURL('image/png');
+                Studio3D.currentTextureText = text;
+                
+                Studio3D.decalScale.set(0.3 * (1024/256), 0.3, 0.3);
+                
+                document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your text. Drag to move it.';
+            });
+        }
+
+        // Add to Cart integration
+        const btnAddToCart = document.getElementById('addToCartBtn');
+        if (btnAddToCart) {
+            btnAddToCart.addEventListener('click', async () => {
+                const btnOriginalText = btnAddToCart.innerHTML;
+                btnAddToCart.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+                btnAddToCart.disabled = true;
+
+                try {
+                    // Take screenshot
+                    Studio3D.renderer.render(Studio3D.scene, Studio3D.camera);
+                    const screenshot = Studio3D.renderer.domElement.toDataURL('image/png');
+
+                    // Clean decals data for storage
+                    const cleanDecals = Studio3D.customDesignConfig.decals.map(d => ({
+                        textureSrc: d.textureSrc,
+                        textureText: d.textureText,
+                        position: d.position,
+                        orientation: d.orientation,
+                        scale: d.scale
+                    }));
+
+                    const customDesignInfo = {
+                        isCustom: true,
+                        shirtColor: Studio3D.state.shirtColor,
+                        fabric: Studio3D.state.fabric,
+                        size: Studio3D.state.size,
+                        decals: cleanDecals
+                    };
+
+                    const cartItem = {
+                        id: `studio-${Date.now()}`,
+                        name: 'Custom T-Shirt Design',
+                        price: parseInt(document.getElementById('totalPrice').textContent.replace(/[^0-9]/g, '')) / Studio3D.state.quantity,
+                        quantity: Studio3D.state.quantity,
+                        size: Studio3D.state.size,
+                        color: Studio3D.state.shirtColor,
+                        image: screenshot,
+                        customDesign: customDesignInfo
+                    };
+
+                    if (window.Cart && window.Cart.addItem) {
+                        await window.Cart.addItem(cartItem);
+                        document.querySelector('.cart-sidebar').classList.add('active');
+                        document.querySelector('.cart-overlay').classList.add('active');
+                        window.Cart.updateCartUI();
+                    } else {
+                        alert('Cart system not found.');
+                    }
+                } catch (error) {
+                    console.error('Add to cart error:', error);
+                    alert('Error adding to cart.');
+                } finally {
+                    btnAddToCart.innerHTML = btnOriginalText;
+                    btnAddToCart.disabled = false;
+                }
+            });
+        }
+    },
+
+    setSide: (side) => {
+        if (!Studio3D.modelContainer) return;
+        document.querySelectorAll('.side-btn').forEach(btn => btn.classList.remove('active'));
+        if (side === 'front') {
+            document.getElementById('btnFront').classList.add('active');
+            Studio3D.modelContainer.rotation.y = 0;
+        } else {
+            document.getElementById('btnBack').classList.add('active');
+            Studio3D.modelContainer.rotation.y = Math.PI;
+        }
     },
 
     setShirtColor: (hexColor) => {
         Studio3D.state.shirtColor = hexColor;
-        if (Studio3D.tshirtMesh) {
-            Studio3D.tshirtMesh.material.color.setHex(parseInt(hexColor.replace('#', '0x')));
-        }
+        Studio3D.tshirtMeshes.forEach(mesh => {
+            mesh.material.color.setHex(parseInt(hexColor.replace('#', '0x')));
+        });
     },
 
     handleImageUpload: (e) => {
@@ -355,6 +492,8 @@ const Studio3D = {
                 Studio3D.decalScale.set(0.3 * aspect, 0.3, 0.3); // Adjust base scale
                 
                 Studio3D.currentTexture = texture;
+                Studio3D.currentTextureSrc = ev.target.result;
+                Studio3D.currentTextureText = null;
                 
                 // Show a hint or automatically place in center
                 document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your image. Drag to move it.';
