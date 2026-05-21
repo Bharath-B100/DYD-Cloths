@@ -1,21 +1,29 @@
-/**
- * DYD-Cloths Design Studio
- * Powered by Fabric.js — professional canvas-based T-shirt designer
- */
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 
-document.addEventListener('DOMContentLoaded', () => Studio.init());
+document.addEventListener('DOMContentLoaded', () => Studio3D.init());
 
-const Studio = {
-    canvas: null,
-    currentSide: 'front',
-    designs: { front: [], back: [] },     // Serialized JSON per side
-    history: [],
-    historyIndex: -1,
-    maxHistory: 30,
+const Studio3D = {
+    scene: null,
+    camera: null,
+    renderer: null,
+    controls: null,
+    tshirtMesh: null,
+    decals: [],
+    
+    currentTexture: null,
+    currentDecalMesh: null,
+    decalScale: new THREE.Vector3(0.3, 0.3, 0.3), // Initial size of decal
+    
+    raycaster: new THREE.Raycaster(),
+    mouse: new THREE.Vector2(),
+    
+    isDraggingDecal: false,
 
     state: {
         shirtColor: '#ffffff',
-        shirtColorName: 'White',
         fabric: '100% Cotton',
         size: 'M',
         quantity: 1
@@ -29,44 +37,213 @@ const Studio = {
         'Organic Cotton': 499
     },
 
-    /* ================================================
-       INIT
-    ================================================ */
     init: () => {
-        Studio.initCanvas();
-        Studio.bindControls();
-        Studio.updatePrice();
-        Studio.renderLayers();
+        Studio3D.initThreeJS();
+        Studio3D.bindControls();
+        Studio3D.updatePrice();
     },
 
-    initCanvas: () => {
-        const canvasEl = document.getElementById('designCanvas');
-        const wrapper = document.getElementById('tshirtMockup');
+    initThreeJS: () => {
+        const container = document.getElementById('threeCanvasContainer');
+        
+        // Scene Setup
+        Studio3D.scene = new THREE.Scene();
+        Studio3D.scene.background = new THREE.Color(0xf5f5f5); // Match the studio background
 
-        // Canvas size matches the print area
-        const W = 300, H = 350;
-        canvasEl.width = W;
-        canvasEl.height = H;
+        // Camera Setup
+        Studio3D.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        Studio3D.camera.position.set(0, 0.5, 3);
 
-        Studio.canvas = new fabric.Canvas('designCanvas', {
-            width: W,
-            height: H,
-            backgroundColor: 'transparent',
-            selection: true,
-            preserveObjectStacking: true
+        // Renderer Setup
+        Studio3D.renderer = new THREE.WebGLRenderer({ antialias: true });
+        Studio3D.renderer.setSize(container.clientWidth, container.clientHeight);
+        Studio3D.renderer.setPixelRatio(window.devicePixelRatio);
+        Studio3D.renderer.outputEncoding = THREE.sRGBEncoding;
+        Studio3D.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        container.appendChild(Studio3D.renderer.domElement);
+
+        // Controls Setup
+        Studio3D.controls = new OrbitControls(Studio3D.camera, Studio3D.renderer.domElement);
+        Studio3D.controls.enableDamping = true;
+        Studio3D.controls.minDistance = 1;
+        Studio3D.controls.maxDistance = 5;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        Studio3D.scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(5, 5, 5);
+        Studio3D.scene.add(dirLight);
+        
+        const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+        dirLight2.position.set(-5, 5, 5);
+        Studio3D.scene.add(dirLight2);
+
+        // Load Model
+        const loader = new GLTFLoader();
+        loader.load(
+            'assets/oversized_t-shirt.glb',
+            (gltf) => {
+                const model = gltf.scene;
+                
+                // Adjust model size and position
+                model.scale.set(1.5, 1.5, 1.5);
+                model.position.set(0, -1, 0);
+
+                // Find the main mesh to apply decals to
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        Studio3D.tshirtMesh = child;
+                        // Clone the material so we can change its color freely
+                        child.material = child.material.clone();
+                        child.material.color.setHex(0xffffff);
+                        child.material.roughness = 0.8;
+                    }
+                });
+
+                Studio3D.scene.add(model);
+                document.getElementById('loadingOverlay').style.display = 'none';
+            },
+            (xhr) => {
+                // console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+            },
+            (error) => {
+                console.error('An error happened loading the GLB model', error);
+                document.getElementById('loadingOverlay').innerHTML = '<span>Error Loading Model</span>';
+            }
+        );
+
+        // Events for interaction
+        window.addEventListener('resize', Studio3D.onWindowResize);
+        container.addEventListener('pointerdown', Studio3D.onPointerDown);
+        container.addEventListener('pointermove', Studio3D.onPointerMove);
+        container.addEventListener('pointerup', Studio3D.onPointerUp);
+
+        // Animation Loop
+        Studio3D.renderer.setAnimationLoop(() => {
+            Studio3D.controls.update();
+            Studio3D.renderer.render(Studio3D.scene, Studio3D.camera);
+        });
+    },
+
+    onWindowResize: () => {
+        const container = document.getElementById('threeCanvasContainer');
+        if (!container) return;
+        Studio3D.camera.aspect = container.clientWidth / container.clientHeight;
+        Studio3D.camera.updateProjectionMatrix();
+        Studio3D.renderer.setSize(container.clientWidth, container.clientHeight);
+    },
+
+    /* ================================================
+       INTERACTION & DECALS
+    ================================================ */
+    onPointerDown: (e) => {
+        if (!Studio3D.tshirtMesh) return;
+
+        // Check if we clicked on an existing decal to start dragging
+        Studio3D.updateRaycaster(e);
+        const intersects = Studio3D.raycaster.intersectObjects(Studio3D.decals);
+        
+        if (intersects.length > 0) {
+            // Clicked a decal, start dragging
+            Studio3D.controls.enabled = false;
+            Studio3D.isDraggingDecal = true;
+            Studio3D.currentDecalMesh = intersects[0].object;
+            return;
+        }
+
+        // If not dragging an existing decal and we have a new texture, try placing it
+        if (Studio3D.currentTexture) {
+            const shirtIntersects = Studio3D.raycaster.intersectObject(Studio3D.tshirtMesh);
+            if (shirtIntersects.length > 0) {
+                Studio3D.placeDecal(shirtIntersects[0]);
+                // Set as active decal for properties (like scale)
+                Studio3D.currentDecalMesh = Studio3D.decals[Studio3D.decals.length - 1];
+                Studio3D.isDraggingDecal = true;
+                Studio3D.controls.enabled = false;
+            }
+        }
+    },
+
+    onPointerMove: (e) => {
+        if (!Studio3D.isDraggingDecal || !Studio3D.currentDecalMesh || !Studio3D.tshirtMesh) return;
+
+        // Update raycaster to new mouse position
+        Studio3D.updateRaycaster(e);
+        const shirtIntersects = Studio3D.raycaster.intersectObject(Studio3D.tshirtMesh);
+
+        if (shirtIntersects.length > 0) {
+            // Move the decal by completely re-generating its geometry at the new spot
+            Studio3D.updateDecalPosition(Studio3D.currentDecalMesh, shirtIntersects[0]);
+        }
+    },
+
+    onPointerUp: (e) => {
+        Studio3D.isDraggingDecal = false;
+        Studio3D.controls.enabled = true; // Re-enable orbit controls
+    },
+
+    updateRaycaster: (e) => {
+        const container = document.getElementById('threeCanvasContainer');
+        const rect = container.getBoundingClientRect();
+        Studio3D.mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+        Studio3D.mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+        Studio3D.raycaster.setFromCamera(Studio3D.mouse, Studio3D.camera);
+    },
+
+    placeDecal: (intersect) => {
+        if (!Studio3D.currentTexture) return;
+
+        const material = new THREE.MeshPhongMaterial({
+            map: Studio3D.currentTexture,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -4, // Ensure decal is rendered on top of the shirt
+            wireframe: false
         });
 
-        // Update layers panel and history on any canvas change
-        Studio.canvas.on('object:added', () => { Studio.renderLayers(); Studio.saveHistory(); Studio.updatePrice(); });
-        Studio.canvas.on('object:removed', () => { Studio.renderLayers(); Studio.saveHistory(); Studio.updatePrice(); });
-        Studio.canvas.on('object:modified', () => { Studio.renderLayers(); Studio.saveHistory(); });
-        Studio.canvas.on('selection:created', Studio.onSelectionChange);
-        Studio.canvas.on('selection:updated', Studio.onSelectionChange);
-        Studio.canvas.on('selection:cleared', Studio.onSelectionCleared);
+        const decalMesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+        Studio3D.scene.add(decalMesh);
+        Studio3D.decals.push(decalMesh);
+
+        Studio3D.updateDecalPosition(decalMesh, intersect);
+        Studio3D.updatePrice();
+        
+        // Reset current texture so we don't stamp infinitely unless user uploads again
+        // Or keep it so they can place multiple. Let's keep it to allow dragging.
+    },
+
+    updateDecalPosition: (decalMesh, intersect) => {
+        const position = intersect.point;
+        // Orient the decal towards the normal of the surface
+        const normal = intersect.face.normal.clone();
+        normal.transformDirection(Studio3D.tshirtMesh.matrixWorld);
+        
+        const orientation = new THREE.Euler();
+        const dummy = new THREE.Object3D();
+        dummy.position.copy(position);
+        dummy.lookAt(position.clone().add(normal));
+        orientation.copy(dummy.rotation);
+        
+        // Adjust orientation slightly so it aligns upright with the model
+        // orientation.z = Math.PI;
+
+        const decalGeometry = new DecalGeometry(
+            Studio3D.tshirtMesh,
+            position,
+            orientation,
+            Studio3D.decalScale
+        );
+        
+        decalMesh.geometry.dispose(); // clean up old geometry
+        decalMesh.geometry = decalGeometry;
     },
 
     /* ================================================
-       CONTROLS BINDING
+       CONTROLS & UI BINDING
     ================================================ */
     bindControls: () => {
         // Shirt colors
@@ -74,366 +251,130 @@ const Studio = {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#shirtColorGrid .color-dot').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                Studio.setShirtColor(btn.dataset.color, btn.title);
+                Studio3D.setShirtColor(btn.dataset.color);
             });
         });
 
         document.getElementById('customShirtColor').addEventListener('input', (e) => {
             document.querySelectorAll('#shirtColorGrid .color-dot').forEach(b => b.classList.remove('active'));
-            Studio.setShirtColor(e.target.value, 'Custom');
+            Studio3D.setShirtColor(e.target.value);
         });
 
-        // Fabric
+        // Fabric & Size & Quantity
         document.getElementById('fabricSelect').addEventListener('change', (e) => {
-            Studio.state.fabric = e.target.value;
-            Studio.updatePrice();
+            Studio3D.state.fabric = e.target.value;
+            Studio3D.updatePrice();
         });
-
-        // Size pills
         document.querySelectorAll('#sizeGrid .size-pill').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#sizeGrid .size-pill').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                Studio.state.size = btn.dataset.size;
+                Studio3D.state.size = btn.dataset.size;
             });
         });
-
-        // Quantity
         document.getElementById('qtyMinus').addEventListener('click', () => {
-            if (Studio.state.quantity > 1) { Studio.state.quantity--; Studio.updateQtyDisplay(); }
+            if (Studio3D.state.quantity > 1) { Studio3D.state.quantity--; Studio3D.updateQtyDisplay(); }
         });
         document.getElementById('qtyPlus').addEventListener('click', () => {
-            if (Studio.state.quantity < 99) { Studio.state.quantity++; Studio.updateQtyDisplay(); }
+            if (Studio3D.state.quantity < 99) { Studio3D.state.quantity++; Studio3D.updateQtyDisplay(); }
         });
 
-        // Toolbar
-        document.getElementById('btnAddText').addEventListener('click', Studio.addText);
+        // Upload Image
         document.getElementById('btnUploadImage').addEventListener('click', () => document.getElementById('imageFileInput').click());
-        document.getElementById('imageFileInput').addEventListener('change', Studio.handleImageUpload);
-        document.getElementById('btnBringForward').addEventListener('click', () => Studio.canvas.getActiveObject()?.bringForward() && Studio.canvas.renderAll());
-        document.getElementById('btnSendBackward').addEventListener('click', () => Studio.canvas.getActiveObject()?.sendBackwards() && Studio.canvas.renderAll());
-        document.getElementById('btnDeleteSelected').addEventListener('click', Studio.deleteSelected);
-        document.getElementById('btnUndo').addEventListener('click', Studio.undo);
-        document.getElementById('btnRedo').addEventListener('click', Studio.redo);
-        document.getElementById('btnClearCanvas').addEventListener('click', Studio.clearCanvas);
+        document.getElementById('imageFileInput').addEventListener('change', Studio3D.handleImageUpload);
 
-        // Text properties
-        document.getElementById('btnApplyText').addEventListener('click', Studio.addText);
-        document.getElementById('textInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') Studio.addText(); });
-        document.getElementById('fontFamily').addEventListener('change', (e) => Studio.updateSelectedText('fontFamily', e.target.value));
-        document.getElementById('fontSize').addEventListener('input', (e) => {
-            document.getElementById('fontSizeValue').textContent = e.target.value + 'px';
-            Studio.updateSelectedText('fontSize', parseInt(e.target.value));
-        });
-        document.getElementById('textColorPicker').addEventListener('input', (e) => Studio.updateSelectedText('fill', e.target.value));
-
-        // Quick text colors
-        document.querySelectorAll('.qtc').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('textColorPicker').value = btn.dataset.color;
-                Studio.updateSelectedText('fill', btn.dataset.color);
-            });
-        });
-
-        // Bold, italic, underline, align
-        document.getElementById('btnBold').addEventListener('click', () => {
-            const obj = Studio.canvas.getActiveObject();
-            if (obj && obj.type === 'textbox') {
-                obj.set('fontWeight', obj.fontWeight === 'bold' ? 'normal' : 'bold');
-                Studio.canvas.renderAll();
+        // Delete Decal
+        document.getElementById('btnDeleteSelected').addEventListener('click', () => {
+            if (Studio3D.currentDecalMesh) {
+                Studio3D.scene.remove(Studio3D.currentDecalMesh);
+                Studio3D.decals = Studio3D.decals.filter(d => d !== Studio3D.currentDecalMesh);
+                Studio3D.currentDecalMesh = null;
+                Studio3D.updatePrice();
             }
         });
-        document.getElementById('btnItalic').addEventListener('click', () => {
-            const obj = Studio.canvas.getActiveObject();
-            if (obj && obj.type === 'textbox') {
-                obj.set('fontStyle', obj.fontStyle === 'italic' ? 'normal' : 'italic');
-                Studio.canvas.renderAll();
+
+        // Clear Canvas
+        document.getElementById('btnClearCanvas').addEventListener('click', () => {
+            if (confirm('Clear all images from the T-shirt?')) {
+                Studio3D.decals.forEach(d => Studio3D.scene.remove(d));
+                Studio3D.decals = [];
+                Studio3D.currentDecalMesh = null;
+                Studio3D.currentTexture = null;
+                Studio3D.updatePrice();
             }
         });
-        document.getElementById('btnUnderline').addEventListener('click', () => {
-            const obj = Studio.canvas.getActiveObject();
-            if (obj && obj.type === 'textbox') {
-                obj.set('underline', !obj.underline);
-                Studio.canvas.renderAll();
-            }
-        });
-        ['Left', 'Center', 'Right'].forEach(align => {
-            document.getElementById(`btnAlign${align}`).addEventListener('click', () => {
-                Studio.updateSelectedText('textAlign', align.toLowerCase());
+        
+        // Decal Size Slider (using font size slider for now or we can map image opacity to scale)
+        const sizeSlider = document.getElementById('imageOpacity');
+        const sizeValue = document.getElementById('imageOpacityValue');
+        if(sizeSlider) {
+            // Repurpose image opacity slider as Decal Scale
+            sizeSlider.previousElementSibling.textContent = "Image Size";
+            sizeSlider.min = "10";
+            sizeSlider.max = "100";
+            sizeSlider.value = "30";
+            sizeValue.textContent = "30%";
+            
+            sizeSlider.addEventListener('input', (e) => {
+                sizeValue.textContent = e.target.value + '%';
+                const scaleVal = e.target.value / 100; // 0.1 to 1.0
+                Studio3D.decalScale.set(scaleVal, scaleVal, scaleVal);
+                
+                // Update current active decal if any
+                if (Studio3D.currentDecalMesh && Studio3D.tshirtMesh) {
+                    // Need to reconstruct DecalGeometry with new scale.
+                    // To do this, we need the original intersect position.
+                    // For simplicity, let's just wait for them to click again to update, 
+                    // or we can raycast from center of bounding box.
+                    // This is a complex step. We'll leave it as setting the scale for the NEXT placement for now.
+                    // Better yet, update the mesh scale (which works if the underlying geometry is centered, but DecalGeometry is absolute).
+                    Studio3D.currentDecalMesh.scale.setScalar(scaleVal / 0.3); // Relative scale adjustment
+                }
             });
-        });
-
-        // Image opacity
-        document.getElementById('imageOpacity').addEventListener('input', (e) => {
-            document.getElementById('imageOpacityValue').textContent = e.target.value + '%';
-            const obj = Studio.canvas.getActiveObject();
-            if (obj) { obj.set('opacity', e.target.value / 100); Studio.canvas.renderAll(); }
-        });
-
-        // Add to cart
-        document.getElementById('addToCartBtn').addEventListener('click', Studio.addToCart);
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            if (e.key === 'Delete' || e.key === 'Backspace') Studio.deleteSelected();
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); Studio.undo(); }
-            if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); Studio.redo(); }
-        });
-    },
-
-    /* ================================================
-       SHIRT COLOR
-    ================================================ */
-    setShirtColor: (color, name = 'Custom') => {
-        Studio.state.shirtColor = color;
-        Studio.state.shirtColorName = name;
-        document.getElementById('tshirtShape').style.backgroundColor = color;
-        // Update border for light colors
-        const isLight = Studio.isLightColor(color);
-        document.getElementById('tshirtShape').style.boxShadow = isLight
-            ? '0 0 0 2px #ddd, var(--shadow-lg)'
-            : 'var(--shadow-lg)';
-    },
-
-    isLightColor: (hex) => {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
-        return (r * 299 + g * 587 + b * 114) / 1000 > 180;
-    },
-
-    /* ================================================
-       SIDE MANAGEMENT
-    ================================================ */
-    setSide: (side) => {
-        // Save current side's design JSON
-        Studio.designs[Studio.currentSide] = Studio.canvas.toJSON(['id', 'label']);
-
-        Studio.currentSide = side;
-
-        // Update buttons
-        document.getElementById('btnFront').classList.toggle('active', side === 'front');
-        document.getElementById('btnBack').classList.toggle('active', side === 'back');
-        document.getElementById('canvasSideLabel').textContent = side.toUpperCase();
-
-        // Load saved design for this side
-        const savedDesign = Studio.designs[side];
-        Studio.canvas.clear();
-        Studio.canvas.backgroundColor = 'transparent';
-
-        if (savedDesign && savedDesign.objects && savedDesign.objects.length > 0) {
-            Studio.canvas.loadFromJSON(savedDesign, () => {
-                Studio.canvas.renderAll();
-                Studio.renderLayers();
-            });
-        } else {
-            Studio.canvas.renderAll();
-            Studio.renderLayers();
         }
     },
 
-    /* ================================================
-       ADD TEXT
-    ================================================ */
-    addText: () => {
-        const text = document.getElementById('textInput').value.trim() || 'Your Text';
-        const font = document.getElementById('fontFamily').value;
-        const size = parseInt(document.getElementById('fontSize').value) || 40;
-        const color = document.getElementById('textColorPicker').value || '#111111';
-
-        const textbox = new fabric.Textbox(text, {
-            left: 60,
-            top: 100,
-            width: 200,
-            fontSize: size,
-            fontFamily: font,
-            fill: color,
-            fontWeight: 'bold',
-            textAlign: 'center',
-            editable: true,
-            id: `text_${Date.now()}`,
-            label: `Text: "${text.substring(0, 15)}"`
-        });
-
-        Studio.canvas.add(textbox);
-        Studio.canvas.setActiveObject(textbox);
-        Studio.canvas.renderAll();
-        document.getElementById('textInput').value = '';
-    },
-
-    updateSelectedText: (prop, value) => {
-        const obj = Studio.canvas.getActiveObject();
-        if (obj) {
-            obj.set(prop, value);
-            Studio.canvas.renderAll();
-            Studio.renderLayers();
+    setShirtColor: (hexColor) => {
+        Studio3D.state.shirtColor = hexColor;
+        if (Studio3D.tshirtMesh) {
+            Studio3D.tshirtMesh.material.color.setHex(parseInt(hexColor.replace('#', '0x')));
         }
     },
 
-    /* ================================================
-       IMAGE UPLOAD
-    ================================================ */
     handleImageUpload: (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = (ev) => {
-            fabric.Image.fromURL(ev.target.result, (img) => {
-                // Scale to fit nicely in the print area
-                const maxW = 200, maxH = 200;
-                const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-                img.set({
-                    left: (Studio.canvas.width - img.width * scale) / 2,
-                    top: (Studio.canvas.height - img.height * scale) / 2 - 40,
-                    scaleX: scale,
-                    scaleY: scale,
-                    id: `img_${Date.now()}`,
-                    label: `Image: ${file.name.substring(0, 20)}`
-                });
-                Studio.canvas.add(img);
-                Studio.canvas.setActiveObject(img);
-                Studio.canvas.renderAll();
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(ev.target.result, (texture) => {
+                texture.colorSpace = THREE.SRGBColorSpace;
+                // Add aspect ratio to decal scale based on image dimensions
+                const aspect = texture.image.width / texture.image.height;
+                Studio3D.decalScale.set(0.3 * aspect, 0.3, 0.3); // Adjust base scale
+                
+                Studio3D.currentTexture = texture;
+                
+                // Show a hint or automatically place in center
+                document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your image. Drag to move it.';
             });
         };
         reader.readAsDataURL(file);
-        e.target.value = ''; // reset so same file can be re-uploaded
-    },
-
-    /* ================================================
-       DELETE / CLEAR
-    ================================================ */
-    deleteSelected: () => {
-        const active = Studio.canvas.getActiveObjects();
-        if (!active.length) return;
-        active.forEach(obj => Studio.canvas.remove(obj));
-        Studio.canvas.discardActiveObject();
-        Studio.canvas.renderAll();
-    },
-
-    clearCanvas: () => {
-        if (!confirm('Clear all elements from this side?')) return;
-        Studio.canvas.clear();
-        Studio.canvas.backgroundColor = 'transparent';
-        Studio.canvas.renderAll();
-        Studio.renderLayers();
-        Studio.updatePrice();
-    },
-
-    /* ================================================
-       UNDO / REDO
-    ================================================ */
-    saveHistory: () => {
-        // Trim future history on new action
-        Studio.history = Studio.history.slice(0, Studio.historyIndex + 1);
-        Studio.history.push(Studio.canvas.toJSON(['id', 'label']));
-        if (Studio.history.length > Studio.maxHistory) Studio.history.shift();
-        Studio.historyIndex = Studio.history.length - 1;
-    },
-
-    undo: () => {
-        if (Studio.historyIndex <= 0) return;
-        Studio.historyIndex--;
-        Studio.canvas.loadFromJSON(Studio.history[Studio.historyIndex], () => {
-            Studio.canvas.renderAll();
-            Studio.renderLayers();
-        });
-    },
-
-    redo: () => {
-        if (Studio.historyIndex >= Studio.history.length - 1) return;
-        Studio.historyIndex++;
-        Studio.canvas.loadFromJSON(Studio.history[Studio.historyIndex], () => {
-            Studio.canvas.renderAll();
-            Studio.renderLayers();
-        });
-    },
-
-    /* ================================================
-       LAYER PANEL
-    ================================================ */
-    renderLayers: () => {
-        const list = document.getElementById('layersList');
-        const objects = Studio.canvas.getObjects();
-        document.getElementById('layerCount').textContent = `(${objects.length})`;
-
-        if (!objects.length) {
-            list.innerHTML = '<p class="no-layers-msg">No elements yet. Add text or image.</p>';
-            return;
-        }
-
-        list.innerHTML = [...objects].reverse().map((obj, reversedIdx) => {
-            const actualIdx = objects.length - 1 - reversedIdx;
-            const icon = obj.type === 'textbox' ? 'fa-font' : 'fa-image';
-            const label = obj.label || obj.type;
-            const isActive = Studio.canvas.getActiveObject() === obj;
-            return `<div class="layer-item ${isActive ? 'active' : ''}" data-idx="${actualIdx}">
-                <i class="fas ${icon}"></i>
-                <span>${label}</span>
-                <button class="layer-delete-btn" data-idx="${actualIdx}"><i class="fas fa-times"></i></button>
-            </div>`;
-        }).join('');
-
-        list.querySelectorAll('.layer-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (e.target.closest('.layer-delete-btn')) return;
-                const obj = objects[parseInt(item.dataset.idx)];
-                Studio.canvas.setActiveObject(obj);
-                Studio.canvas.renderAll();
-                Studio.renderLayers();
-            });
-        });
-
-        list.querySelectorAll('.layer-delete-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const obj = objects[parseInt(btn.dataset.idx)];
-                Studio.canvas.remove(obj);
-                Studio.canvas.renderAll();
-            });
-        });
-    },
-
-    onSelectionChange: (e) => {
-        const obj = Studio.canvas.getActiveObject();
-        if (!obj) return;
-        if (obj.type === 'textbox') {
-            document.getElementById('fontFamily').value = obj.fontFamily || 'Inter';
-            document.getElementById('fontSize').value = obj.fontSize || 40;
-            document.getElementById('fontSizeValue').textContent = (obj.fontSize || 40) + 'px';
-            document.getElementById('textColorPicker').value = obj.fill || '#111111';
-        }
-        if (obj.type === 'image') {
-            document.getElementById('imageOpacity').value = Math.round((obj.opacity || 1) * 100);
-            document.getElementById('imageOpacityValue').textContent = Math.round((obj.opacity || 1) * 100) + '%';
-        }
-        Studio.renderLayers();
-    },
-
-    onSelectionCleared: () => {
-        Studio.renderLayers();
+        e.target.value = '';
     },
 
     /* ================================================
        PRICING
     ================================================ */
     updatePrice: () => {
-        const basePrice = Studio.pricing[Studio.state.fabric] || 299;
-
-        // Print cost based on design complexity
-        const objectCount = Studio.canvas ? Studio.canvas.getObjects().length : 0;
-        const hasImage = Studio.canvas ? Studio.canvas.getObjects().some(o => o.type === 'image') : false;
-        const hasText = Studio.canvas ? Studio.canvas.getObjects().some(o => o.type === 'textbox') : false;
-
-        let printCost = 0;
-        if (hasImage && hasText) printCost = 200;
-        else if (hasImage) printCost = 150;
-        else if (hasText) printCost = 100;
+        const basePrice = Studio3D.pricing[Studio3D.state.fabric] || 299;
+        const printCost = Studio3D.decals.length > 0 ? 150 : 0; // Simple print cost rule
 
         const unitPrice = basePrice + printCost;
-        const total = unitPrice * Studio.state.quantity;
+        const total = unitPrice * Studio3D.state.quantity;
 
-        document.getElementById('priceLabel').textContent = `${Studio.state.fabric}`;
+        document.getElementById('priceLabel').textContent = `${Studio3D.state.fabric}`;
         document.getElementById('basePrice').textContent = `₹${basePrice}`;
 
         const printRow = document.getElementById('printPriceRow');
@@ -444,66 +385,14 @@ const Studio = {
             printRow.style.display = 'none';
         }
 
-        document.getElementById('qtyNote').textContent = `×${Studio.state.quantity}`;
+        document.getElementById('qtyNote').textContent = `×${Studio3D.state.quantity}`;
         document.getElementById('totalPrice').textContent = `₹${total.toLocaleString('en-IN')}`;
     },
 
     updateQtyDisplay: () => {
-        document.getElementById('qtyDisplay').textContent = Studio.state.quantity;
-        Studio.updatePrice();
-    },
-
-    /* ================================================
-       ADD TO CART
-    ================================================ */
-    addToCart: () => {
-        // Save current side before exporting
-        Studio.designs[Studio.currentSide] = Studio.canvas.toJSON(['id', 'label']);
-
-        const frontHasDesign = Studio.designs.front?.objects?.length > 0;
-        const backHasDesign = Studio.designs.back?.objects?.length > 0;
-
-        if (!frontHasDesign && !backHasDesign) {
-            Utils.showToast('Please add at least one element to your design', 'warning');
-            return;
-        }
-
-        // Export canvas as a data URL preview image
-        const previewDataUrl = Studio.canvas.toDataURL({ format: 'png', multiplier: 1.5 });
-
-        const basePrice = Studio.pricing[Studio.state.fabric] || 299;
-        const hasImage = Studio.canvas.getObjects().some(o => o.type === 'image');
-        const hasText = Studio.canvas.getObjects().some(o => o.type === 'textbox');
-        let printCost = 0;
-        if (hasImage && hasText) printCost = 200;
-        else if (hasImage) printCost = 150;
-        else if (hasText) printCost = 100;
-
-        const unitPrice = basePrice + printCost;
-        let designDescription = 'Custom Design T-Shirt';
-        if (hasImage && hasText) designDescription = 'Image + Text Printed T-Shirt';
-        else if (hasImage) designDescription = 'Image Printed T-Shirt';
-        else if (hasText) designDescription = 'Text Printed T-Shirt';
-
-        const success = CartManager.addItem({
-            id: `studio-${Date.now()}`,
-            name: designDescription,
-            price: unitPrice,
-            image: previewDataUrl,
-            size: Studio.state.size,
-            color: `${Studio.state.shirtColorName} / ${Studio.state.fabric}`,
-            quantity: Studio.state.quantity,
-            maxStock: 999,
-            isCustom: true,
-            designFront: JSON.stringify(Studio.designs.front),
-            designBack: JSON.stringify(Studio.designs.back)
-        });
-
-        if (success) {
-            Utils.showToast(`Custom T-shirt added to cart! (${Studio.state.quantity}×₹${unitPrice})`, 'success');
-            if (typeof window.openCart === 'function') window.openCart();
-        }
+        document.getElementById('qtyDisplay').textContent = Studio3D.state.quantity;
+        Studio3D.updatePrice();
     }
 };
 
-window.Studio = Studio;
+window.Studio = Studio3D; // For external compatibility

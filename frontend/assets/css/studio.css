@@ -401,33 +401,32 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: 0;
+    width: 100%;
+    flex: 1;
 }
 
 .tshirt-mockup {
     position: relative;
-    width: 380px;
-    min-height: 500px;
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* T-Shirt Shape (CSS-only mockup) */
+#threeCanvasContainer {
+    width: 100%;
+    min-height: 500px; /* Base min-height */
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* T-Shirt Shape (Removed for 3D) */
 .tshirt-shape {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ffffff;
-    clip-path: polygon(
-        24% 0%, 37% 0%, 42% 8%, 58% 8%, 63% 0%, 
-        76% 0%, 97% 19%, 87% 37%, 79% 31%, 79% 100%, 
-        21% 100%, 21% 31%, 13% 37%, 3% 19%
-    );
-    transition: background-color var(--transition);
-    box-shadow: var(--shadow-md);
+    display: none;
 }
 
 /* Print Area Indicator */

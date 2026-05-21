@@ -148,15 +148,15 @@
                 </button>
             </div>
 
-            <!-- Canvas Wrapper with T-Shirt Mockup -->
-            <div class="canvas-wrapper" id="canvasWrapper">
-                <div class="tshirt-mockup" id="tshirtMockup">
-                    <div class="tshirt-shape" id="tshirtShape">
-                        <div class="print-area-indicator">Print Area</div>
+            <!-- 3D Canvas Wrapper -->
+            <div class="canvas-wrapper" id="canvasWrapper" style="background: transparent; border: none; box-shadow: none;">
+                <div id="threeCanvasContainer" style="width: 100%; height: 100%; position: relative;">
+                    <!-- Loading overlay for 3D model -->
+                    <div id="loadingOverlay" style="position: absolute; top:0; left:0; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:rgba(0,0,0,0.8); color:white; z-index:10; border-radius:12px; flex-direction:column;">
+                        <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom:10px;"></i>
+                        <span>Loading 3D Model...</span>
                     </div>
-                    <canvas id="designCanvas"></canvas>
                 </div>
-                <div class="canvas-side-label" id="canvasSideLabel">FRONT</div>
             </div>
 
             <!-- Layer info -->
@@ -280,10 +280,17 @@
     <script src="assets/js/core/api.js"></script>
     <script src="assets/js/core/auth.js"></script>
     <script src="assets/js/core/cart.js"></script>
-    <!-- Fabric.js Canvas Library (CDN) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
     <script src="assets/js/main.js"></script>
-    <script src="assets/js/studio.js"></script>
+    <script type="module" src="assets/js/studio.js"></script>
     <script src="assets/js/search.js"></script>
 </body>
 </html>
