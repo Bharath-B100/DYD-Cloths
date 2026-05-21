@@ -160,10 +160,11 @@
         <div class="lightbox-content">
             <h3 class="lightbox-title" id="lightboxTitle">Custom Design Preview</h3>
             <div class="lightbox-shirt-preview">
-            <div class="preview-actions" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;" id="previewActions">
-                <button class="btn btn-outline active" id="btnView2D">2D Snapshot</button>
-                <button class="btn btn-primary" id="btnView3D" style="display: none;">Interactive 3D View</button>
-                <button class="btn btn-outline" id="btnDownloadAssets" style="display: none;"><i class="fas fa-download"></i> Download Assets</button>
+            <div class="preview-actions" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; flex-wrap:wrap;" id="previewActions">
+                <button class="btn btn-outline active" id="btnViewFront"><i class="fas fa-arrow-up"></i> Front</button>
+                <button class="btn btn-outline" id="btnViewBack"><i class="fas fa-arrow-down"></i> Back</button>
+                <button class="btn btn-primary" id="btnView3D" style="display: none;"><i class="fas fa-cube"></i> 3D View</button>
+                <button class="btn btn-outline" id="btnDownloadAssets" style="display: none;"><i class="fas fa-download"></i> Download All</button>
             </div>
             <div id="lightbox2DPreview">
                 <img id="lightboxImage" src="" alt="Custom Design" style="max-width: 100%; height: auto;">
@@ -307,7 +308,7 @@
             }
         }
     </script>
-    <script src="assets/js/admin.js?v=20260521-2"></script>
+    <script src="assets/js/admin.js?v=20260521-3"></script>
     <script src="assets/js/search.js"></script>
 </body>
 </html>

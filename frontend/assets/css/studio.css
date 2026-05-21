@@ -164,6 +164,87 @@
 }
 
 /* =========================================== */
+/* PER-SIDE UPLOAD SLOTS                      */
+/* =========================================== */
+
+.side-upload-slot {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 1.5px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    transition: border-color var(--transition-fast);
+}
+
+.side-upload-slot:hover {
+    border-color: var(--primary);
+}
+
+.side-upload-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.side-thumb-wrap {
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.side-thumb-empty {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    padding: 12px;
+    text-align: center;
+    display: block;
+}
+
+.studio-btn-outline {
+    flex: 1;
+    padding: 0.5rem 0.5rem;
+    border: 1.5px solid var(--primary);
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--primary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.studio-btn-outline:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.studio-btn-outline.danger {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.studio-btn-outline.danger:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* =========================================== */
 /* COLOR GRID & PICKER                        */
 /* =========================================== */
 

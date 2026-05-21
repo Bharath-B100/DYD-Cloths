@@ -46,12 +46,46 @@
             <div class="tool-section">
                 <label class="tool-label">Garment Side</label>
                 <div class="side-toggle">
-                    <button class="side-btn active" id="btnFront" onclick="Studio.setSide('front')">
+                    <button class="side-btn active" id="btnFront" onclick="Studio3D.setSide('front')">
                         <i class="fas fa-arrow-up"></i> Front
                     </button>
-                    <button class="side-btn" id="btnBack" onclick="Studio.setSide('back')">
+                    <button class="side-btn" id="btnBack" onclick="Studio3D.setSide('back')">
                         <i class="fas fa-arrow-down"></i> Back
                     </button>
+                </div>
+
+                <!-- Front Upload Slot -->
+                <div class="side-upload-slot" id="frontUploadSlot">
+                    <p class="side-upload-label"><i class="fas fa-arrow-up" style="color:var(--primary)"></i> Front Design</p>
+                    <div class="side-thumb-wrap" id="frontThumbWrap">
+                        <span class="side-thumb-empty">No image uploaded</span>
+                    </div>
+                    <div style="display:flex; gap:6px; margin-top:8px;">
+                        <button class="studio-btn-outline" id="btnUploadFront">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                        <button class="studio-btn-outline danger" id="btnClearFront" style="display:none">
+                            <i class="fas fa-times"></i> Clear
+                        </button>
+                    </div>
+                    <input type="file" id="frontFileInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
+                </div>
+
+                <!-- Back Upload Slot -->
+                <div class="side-upload-slot" id="backUploadSlot" style="display:none">
+                    <p class="side-upload-label"><i class="fas fa-arrow-down" style="color:#f59e0b"></i> Back Design</p>
+                    <div class="side-thumb-wrap" id="backThumbWrap">
+                        <span class="side-thumb-empty">No image uploaded</span>
+                    </div>
+                    <div style="display:flex; gap:6px; margin-top:8px;">
+                        <button class="studio-btn-outline" id="btnUploadBack">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                        <button class="studio-btn-outline danger" id="btnClearBack" style="display:none">
+                            <i class="fas fa-times"></i> Clear
+                        </button>
+                    </div>
+                    <input type="file" id="backFileInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
                 </div>
             </div>
 
@@ -290,7 +324,7 @@
         }
     </script>
     <script src="assets/js/main.js"></script>
-    <script type="module" src="assets/js/studio.js?v=20260521-2"></script>
+    <script type="module" src="assets/js/studio.js?v=20260521-3"></script>
     <script src="assets/js/search.js"></script>
 </body>
 </html>

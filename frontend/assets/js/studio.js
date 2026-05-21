@@ -35,6 +35,13 @@ const Studio3D = {
         quantity: 1
     },
 
+    // Per-side raw uploaded images
+    designs: {
+        front: { rawSrc: null },
+        back:  { rawSrc: null }
+    },
+    currentSide: 'front',
+
     textStyle: {
         bold: false,
         italic: false,
@@ -342,9 +349,27 @@ const Studio3D = {
             if (Studio3D.state.quantity < 99) { Studio3D.state.quantity++; Studio3D.updateQtyDisplay(); }
         });
 
-        // Upload Image
-        document.getElementById('btnUploadImage').addEventListener('click', () => document.getElementById('imageFileInput').click());
-        document.getElementById('imageFileInput').addEventListener('change', Studio3D.handleImageUpload);
+        // Per-side image upload buttons
+        document.getElementById('btnUploadFront').addEventListener('click', () => {
+            Studio3D.setSide('front');
+            setTimeout(() => document.getElementById('frontFileInput').click(), 200);
+        });
+        document.getElementById('btnUploadBack').addEventListener('click', () => {
+            Studio3D.setSide('back');
+            setTimeout(() => document.getElementById('backFileInput').click(), 200);
+        });
+        document.getElementById('frontFileInput').addEventListener('change', (e) => Studio3D.handleSideUpload(e, 'front'));
+        document.getElementById('backFileInput').addEventListener('change', (e) => Studio3D.handleSideUpload(e, 'back'));
+
+        // Clear per-side image
+        document.getElementById('btnClearFront').addEventListener('click', () => Studio3D.clearSideDesign('front'));
+        document.getElementById('btnClearBack').addEventListener('click', () => Studio3D.clearSideDesign('back'));
+
+        // Toolbar image button still works (uploads for current side)
+        document.getElementById('btnUploadImage').addEventListener('click', () => {
+            const inputId = Studio3D.currentSide === 'front' ? 'frontFileInput' : 'backFileInput';
+            document.getElementById(inputId).click();
+        });
 
         // Delete Decal
         document.getElementById('btnDeleteSelected').addEventListener('click', () => {
@@ -479,13 +504,25 @@ const Studio3D = {
         if (btnAddToCart) {
             btnAddToCart.addEventListener('click', async () => {
                 const btnOriginalText = btnAddToCart.innerHTML;
-                btnAddToCart.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+                btnAddToCart.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Capturing...';
                 btnAddToCart.disabled = true;
 
                 try {
-                    // Take screenshot
-                    Studio3D.renderer.render(Studio3D.scene, Studio3D.camera);
-                    const screenshot = Studio3D.renderer.domElement.toDataURL('image/png');
+                    // Helper: render a specific side and capture screenshot
+                    const captureScreenshot = (side) => new Promise(resolve => {
+                        Studio3D.modelContainer.rotation.y = side === 'front' ? 0 : Math.PI;
+                        Studio3D.controls.update();
+                        requestAnimationFrame(() => {
+                            Studio3D.renderer.render(Studio3D.scene, Studio3D.camera);
+                            resolve(Studio3D.renderer.domElement.toDataURL('image/png'));
+                        });
+                    });
+
+                    const frontScreenshot = await captureScreenshot('front');
+                    const backScreenshot = await captureScreenshot('back');
+
+                    // Restore current side
+                    Studio3D.setSide(Studio3D.currentSide);
 
                     // Clean decals data for storage
                     const cleanDecals = Studio3D.customDesignConfig.decals.map(d => ({
@@ -502,7 +539,13 @@ const Studio3D = {
                         shirtColor: Studio3D.state.shirtColor,
                         fabric: Studio3D.state.fabric,
                         size: Studio3D.state.size,
-                        decals: cleanDecals
+                        decals: cleanDecals,
+                        // Separate front/back screenshots
+                        frontImage: frontScreenshot,
+                        backImage: backScreenshot,
+                        // Raw uploaded images (for admin download)
+                        frontUpload: Studio3D.designs.front.rawSrc,
+                        backUpload: Studio3D.designs.back.rawSrc
                     };
 
                     const cartItem = {
@@ -512,7 +555,7 @@ const Studio3D = {
                         quantity: Studio3D.state.quantity,
                         size: Studio3D.state.size,
                         color: Studio3D.state.shirtColor,
-                        image: screenshot,
+                        image: frontScreenshot,
                         customDesign: customDesignInfo
                     };
 
@@ -537,13 +580,22 @@ const Studio3D = {
 
     setSide: (side) => {
         if (!Studio3D.modelContainer) return;
+        Studio3D.currentSide = side;
         document.querySelectorAll('.side-btn').forEach(btn => btn.classList.remove('active'));
+        
+        const frontSlot = document.getElementById('frontUploadSlot');
+        const backSlot = document.getElementById('backUploadSlot');
+
         if (side === 'front') {
             document.getElementById('btnFront').classList.add('active');
             Studio3D.modelContainer.rotation.y = 0;
+            if (frontSlot) frontSlot.style.display = 'block';
+            if (backSlot) backSlot.style.display = 'none';
         } else {
             document.getElementById('btnBack').classList.add('active');
             Studio3D.modelContainer.rotation.y = Math.PI;
+            if (frontSlot) frontSlot.style.display = 'none';
+            if (backSlot) backSlot.style.display = 'block';
         }
     },
 
@@ -554,29 +606,56 @@ const Studio3D = {
         });
     },
 
-    handleImageUpload: (e) => {
+    handleSideUpload: (e, side) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Ensure we are on the correct side
+        Studio3D.setSide(side);
+
         const reader = new FileReader();
         reader.onload = (ev) => {
+            const rawSrc = ev.target.result;
+            // Store the raw file
+            Studio3D.designs[side].rawSrc = rawSrc;
+
+            // Show thumbnail in the slot
+            const thumbWrap = document.getElementById(side === 'front' ? 'frontThumbWrap' : 'backThumbWrap');
+            const clearBtn = document.getElementById(side === 'front' ? 'btnClearFront' : 'btnClearBack');
+            if (thumbWrap) {
+                thumbWrap.innerHTML = `<img src="${rawSrc}" style="max-width:100%; max-height:100px; border-radius:6px; border:1px solid #ddd; object-fit:contain;">`;
+            }
+            if (clearBtn) clearBtn.style.display = 'inline-flex';
+
+            // Load into THREE and prepare as decal
             const textureLoader = new THREE.TextureLoader();
-            textureLoader.load(ev.target.result, (texture) => {
+            textureLoader.load(rawSrc, (texture) => {
                 texture.colorSpace = THREE.SRGBColorSpace;
                 const aspect = texture.image.width / texture.image.height;
                 Studio3D.decalBaseScale.set(0.3 * aspect, 0.3, 0.1);
-                Studio3D.decalScale.copy(Studio3D.decalBaseScale); // Reset scale
-                
+                Studio3D.decalScale.copy(Studio3D.decalBaseScale);
                 Studio3D.currentTexture = texture;
-                Studio3D.currentTextureSrc = ev.target.result;
+                Studio3D.currentTextureSrc = rawSrc;
                 Studio3D.currentTextureText = null;
-                
-                // Show a hint or automatically place in center
                 document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your image. Drag to move it.';
             });
         };
         reader.readAsDataURL(file);
         e.target.value = '';
+    },
+
+    clearSideDesign: (side) => {
+        Studio3D.designs[side].rawSrc = null;
+        const thumbWrap = document.getElementById(side === 'front' ? 'frontThumbWrap' : 'backThumbWrap');
+        const clearBtn = document.getElementById(side === 'front' ? 'btnClearFront' : 'btnClearBack');
+        if (thumbWrap) thumbWrap.innerHTML = '<span class="side-thumb-empty">No image uploaded</span>';
+        if (clearBtn) clearBtn.style.display = 'none';
+        // Remove decals on this side
+        Studio3D.setSide(side);
+    },
+
+    handleImageUpload: (e) => {
+        Studio3D.handleSideUpload(e, Studio3D.currentSide);
     },
 
     /* ================================================

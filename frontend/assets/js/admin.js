@@ -615,75 +615,97 @@ const Admin = {
 
         if (!lightbox || !img) return;
 
-        // Always show the cart snapshot in 2D view
-        const fullImg = item.image || '';
-        img.src = fullImg;
+        const cd = item.customDesign;
+
+        // Set initial 2D image (front screenshot or cart image)
+        const frontImg = cd?.frontImage || item.image || '';
+        const backImg = cd?.backImage || '';
+        img.src = frontImg;
         img.style.cssText = 'max-width:100%; max-height:70vh; display:block; margin:0 auto; border-radius:8px;';
         if (titleEl) titleEl.textContent = item.name + ' – Design Preview';
         if (infoEl) infoEl.textContent = `Color: ${item.color} | Size: ${item.size}`;
 
+        // Front / Back tab buttons
+        const btnFront = document.getElementById('btnViewFront');
+        const btnBack = document.getElementById('btnViewBack');
         const btn3D = document.getElementById('btnView3D');
-        const btn2D = document.getElementById('btnView2D');
         const btnDownload = document.getElementById('btnDownloadAssets');
         const view2D = document.getElementById('lightbox2DPreview');
         const view3D = document.getElementById('lightbox3DPreview');
-        
-        if(btn2D) btn2D.classList.add('active');
-        if(btn3D) btn3D.classList.remove('active');
-        if(view2D) view2D.style.display = 'block';
-        if(view3D) view3D.style.display = 'none';
 
-        if (item.customDesign) {
-            if(btn3D) btn3D.style.display = 'inline-block';
-            if(btnDownload) {
-                btnDownload.style.display = 'inline-block';
-                btnDownload.onclick = () => Admin.downloadAssets(item.customDesign);
-            }
-            if(btn3D) {
+        // Reset tab states
+        [btnFront, btnBack].forEach(b => b?.classList.remove('active'));
+        btnFront?.classList.add('active');
+        if (view2D) view2D.style.display = 'block';
+        if (view3D) view3D.style.display = 'none';
+
+        if (btnFront) btnFront.onclick = () => {
+            img.src = cd?.frontImage || item.image || '';
+            [btnFront, btnBack].forEach(b => b?.classList.remove('active'));
+            btnFront.classList.add('active');
+            if (view2D) view2D.style.display = 'block';
+            if (view3D) view3D.style.display = 'none';
+        };
+
+        if (btnBack) btnBack.onclick = () => {
+            if (!backImg) { Utils.showToast('No back design for this order', 'info'); return; }
+            img.src = backImg;
+            [btnFront, btnBack].forEach(b => b?.classList.remove('active'));
+            btnBack.classList.add('active');
+            if (view2D) view2D.style.display = 'block';
+            if (view3D) view3D.style.display = 'none';
+        };
+
+        if (cd) {
+            if (btn3D) {
+                btn3D.style.display = 'inline-flex';
                 btn3D.onclick = () => {
-                    btn3D.classList.add('active');
-                    btn2D.classList.remove('active');
-                    view2D.style.display = 'none';
-                    view3D.style.display = 'block';
-                    Admin.render3DPreview(item.customDesign, view3D);
+                    if (view2D) view2D.style.display = 'none';
+                    if (view3D) view3D.style.display = 'block';
+                    [btnFront, btnBack].forEach(b => b?.classList.remove('active'));
+                    Admin.render3DPreview(cd, view3D);
                 };
             }
-            if(btn2D) {
-                btn2D.onclick = () => {
-                    btn2D.classList.add('active');
-                    btn3D.classList.remove('active');
-                    view2D.style.display = 'block';
-                    view3D.style.display = 'none';
-                };
-            }
-
-            const assetsContainer = document.getElementById('lightboxExtractedAssets');
-            const assetsGrid = document.getElementById('lightboxAssetsGrid');
-            if (assetsContainer && assetsGrid) {
-                const uploads = item.customDesign.decals ? item.customDesign.decals.filter(d => d.textureSrc && !d.textureText) : [];
-                if (uploads.length > 0) {
-                    assetsContainer.style.display = 'block';
-                    assetsGrid.innerHTML = uploads.map((u, i) => `
-                        <div style="text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                            <img src="${u.textureSrc}" style="width: 100px; height: 100px; object-fit: contain; margin-bottom: 8px; display: block; background: #f5f5f5; border-radius: 4px;">
-                            <button class="btn btn-sm btn-primary" onclick="Admin.downloadAssetFromOrder('${order._id}', ${itemIndex}, ${i})">
-                                <i class="fas fa-download"></i> Download
-                            </button>
-                        </div>
-                    `).join('');
-                } else {
-                    assetsContainer.style.display = 'none';
-                }
+            if (btnDownload) {
+                btnDownload.style.display = 'inline-flex';
+                btnDownload.onclick = () => Admin.downloadAllAssets(order._id, itemIndex);
             }
         } else {
-            if(btn3D) btn3D.style.display = 'none';
-            if(btnDownload) btnDownload.style.display = 'none';
-            const assetsContainer = document.getElementById('lightboxExtractedAssets');
-            if(assetsContainer) assetsContainer.style.display = 'none';
+            if (btn3D) btn3D.style.display = 'none';
+            if (btnDownload) btnDownload.style.display = 'none';
+        }
+
+        // Raw uploaded images section
+        const assetsContainer = document.getElementById('lightboxExtractedAssets');
+        const assetsGrid = document.getElementById('lightboxAssetsGrid');
+        if (assetsContainer && assetsGrid) {
+            const hasUploads = cd?.frontUpload || cd?.backUpload;
+            if (hasUploads) {
+                assetsContainer.style.display = 'block';
+                assetsGrid.innerHTML = '';
+
+                const makeCard = (src, label, side, idx) => {
+                    if (!src) return '';
+                    const div = document.createElement('div');
+                    div.style.cssText = 'text-align:center; background:#fff; padding:10px; border-radius:8px; border:1px solid #ddd; min-width:110px;';
+                    div.innerHTML = `
+                        <img src="${src}" style="width:100px; height:100px; object-fit:contain; display:block; background:#f5f5f5; border-radius:4px; margin-bottom:8px;">
+                        <p style="font-size:12px; margin:0 0 6px; font-weight:600;">${label}</p>
+                        <button class="btn btn-sm btn-primary" onclick="Admin.downloadAssetFromSide('${order._id}', ${itemIndex}, '${side}')">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    `;
+                    assetsGrid.appendChild(div);
+                };
+
+                makeCard(cd.frontUpload, 'Front Upload', 'front', 0);
+                makeCard(cd.backUpload, 'Back Upload', 'back', 1);
+            } else {
+                assetsContainer.style.display = 'none';
+            }
         }
 
         lightbox.classList.add('active');
-        
         const closeBtn = document.getElementById('closeLightboxBtn');
         if (closeBtn) closeBtn.onclick = () => lightbox.classList.remove('active');
     },
@@ -697,6 +719,31 @@ const Admin = {
         });
     },
 
+    downloadAssetFromSide: (orderId, itemIdx, side) => {
+        const order = Admin.orders?.find(o => o._id === orderId);
+        if (!order) return;
+        const item = order.items[itemIdx];
+        if (!item?.customDesign) return;
+        const src = side === 'front' ? item.customDesign.frontUpload : item.customDesign.backUpload;
+        if (src) Admin.downloadAsset(src, `design-${side}-${orderId.slice(-6)}.png`);
+        else Utils.showToast(`No ${side} image uploaded for this order`, 'info');
+    },
+
+    downloadAllAssets: (orderId, itemIdx) => {
+        const order = Admin.orders?.find(o => o._id === orderId);
+        if (!order) return;
+        const item = order.items[itemIdx];
+        const cd = item?.customDesign;
+        if (!cd) return;
+        if (cd.frontUpload) Admin.downloadAsset(cd.frontUpload, `front-${orderId.slice(-6)}.png`);
+        if (cd.backUpload) Admin.downloadAsset(cd.backUpload, `back-${orderId.slice(-6)}.png`);
+        // Also download decal uploads if any
+        if (cd.decals) {
+            cd.decals.filter(d => d.textureSrc && !d.textureText).forEach((d, i) => {
+                Admin.downloadAsset(d.textureSrc, `decal-${i+1}-${orderId.slice(-6)}.png`);
+            });
+        }
+    },
     downloadAssetFromOrder: (orderId, itemIdx, decalIdx) => {
         const order = Admin.orders?.find(o => o._id === orderId);
         if (!order) return;
