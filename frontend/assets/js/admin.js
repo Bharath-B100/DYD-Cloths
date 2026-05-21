@@ -574,6 +574,28 @@ const Admin = {
         `;
 
         modal.classList.add('active');
+
+        const closeBtn = document.getElementById('closeModalBtn');
+        if (closeBtn) closeBtn.onclick = () => modal.classList.remove('active');
+        
+        const printBtn = document.getElementById('btnPrintOrder');
+        if (printBtn) {
+            printBtn.onclick = () => {
+                const modalBody = document.getElementById('orderModalBody').innerHTML;
+                const printWindow = window.open('', '', 'height=600,width=800');
+                printWindow.document.write('<html><head><title>Print Order - DYD Cloths</title>');
+                printWindow.document.write('<style>body { font-family: Arial, sans-serif; padding: 20px; } .order-item-row { display: flex; gap: 20px; border-bottom: 1px solid #ccc; padding: 15px 0; } img { max-width: 100px; border:1px solid #ddd; padding:5px; } .order-summary-card { margin-top: 20px; border-top: 2px solid #000; padding-top: 10px; font-weight:bold; } .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; } h4 { margin: 0 0 5px 0; } p { margin: 0; color: #555; }</style>');
+                printWindow.document.write('</head><body>');
+                printWindow.document.write(modalBody);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            };
+        }
     },
 
     openDesignLightbox: (orderId, itemIndex) => {
@@ -627,12 +649,36 @@ const Admin = {
                     view3D.style.display = 'none';
                 };
             }
+
+            const assetsContainer = document.getElementById('lightboxExtractedAssets');
+            const assetsGrid = document.getElementById('lightboxAssetsGrid');
+            if (assetsContainer && assetsGrid) {
+                const uploads = item.customDesign.decals ? item.customDesign.decals.filter(d => d.textureSrc && !d.textureText) : [];
+                if (uploads.length > 0) {
+                    assetsContainer.style.display = 'block';
+                    assetsGrid.innerHTML = uploads.map((u, i) => `
+                        <div style="text-align: center; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                            <img src="${u.textureSrc}" style="width: 100px; height: 100px; object-fit: contain; margin-bottom: 8px; display: block; background: #f5f5f5; border-radius: 4px;">
+                            <button class="btn btn-sm btn-primary" onclick="Admin.downloadAssetFromOrder('${order._id}', ${itemIndex}, ${i})">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    assetsContainer.style.display = 'none';
+                }
+            }
         } else {
             if(btn3D) btn3D.style.display = 'none';
             if(btnDownload) btnDownload.style.display = 'none';
+            const assetsContainer = document.getElementById('lightboxExtractedAssets');
+            if(assetsContainer) assetsContainer.style.display = 'none';
         }
 
         lightbox.classList.add('active');
+        
+        const closeBtn = document.getElementById('closeLightboxBtn');
+        if (closeBtn) closeBtn.onclick = () => lightbox.classList.remove('active');
     },
 
     downloadAssets: (customDesign) => {
