@@ -484,7 +484,7 @@ const Admin = {
                                                 <small style="color: var(--text-muted); display: block; margin-bottom: 5px;">Uploaded Images (Click to download):</small>
                                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                                     ${uploads.map((u, i) => `
-                                                        <img src="${u.textureSrc}" style="width: 60px; height: 60px; object-fit: contain; background: #fff; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; transition: 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1" onclick="Admin.downloadAsset('${u.textureSrc}', 'customer-upload-${order._id}-${i+1}.png')" title="Download Image ${i+1}">
+                                                        <img src="${u.textureSrc}" style="width: 60px; height: 60px; object-fit: contain; background: #fff; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; transition: 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1" onclick="Admin.downloadAssetFromOrder('${order._id}', ${order.items.indexOf(item)}, ${i})" title="Download Image ${i+1}">
                                                     `).join('')}
                                                 </div>
                                             </div>
@@ -642,6 +642,18 @@ const Admin = {
                 Admin.downloadAsset(decal.textureSrc, `custom-design-asset-${index + 1}.png`);
             }
         });
+    },
+
+    downloadAssetFromOrder: (orderId, itemIdx, decalIdx) => {
+        const order = Admin.orders?.find(o => o._id === orderId);
+        if (!order) return;
+        const item = order.items[itemIdx];
+        if (!item || !item.customDesign || !item.customDesign.decals) return;
+        const uploads = item.customDesign.decals.filter(d => d.textureSrc && !d.textureText);
+        const decal = uploads[decalIdx];
+        if (decal && decal.textureSrc) {
+            Admin.downloadAsset(decal.textureSrc, `customer-upload-${orderId}-${decalIdx+1}.png`);
+        }
     },
 
     downloadAsset: (src, filename) => {

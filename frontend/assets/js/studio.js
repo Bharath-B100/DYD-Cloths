@@ -493,7 +493,8 @@ const Studio3D = {
                         textureText: d.textureText,
                         position: d.position,
                         orientation: d.orientation,
-                        scale: d.scale
+                        scale: d.scale,
+                        targetMeshName: d.targetMeshName
                     }));
 
                     const customDesignInfo = {
