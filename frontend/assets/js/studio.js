@@ -63,7 +63,7 @@ const Studio3D = {
         Studio3D.renderer = new THREE.WebGLRenderer({ antialias: true });
         Studio3D.renderer.setSize(container.clientWidth, container.clientHeight);
         Studio3D.renderer.setPixelRatio(window.devicePixelRatio);
-        Studio3D.renderer.outputEncoding = THREE.sRGBEncoding;
+        Studio3D.renderer.outputColorSpace = THREE.SRGBColorSpace;
         Studio3D.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         container.appendChild(Studio3D.renderer.domElement);
 
@@ -341,7 +341,9 @@ const Studio3D = {
         const sizeValue = document.getElementById('imageOpacityValue');
         if(sizeSlider) {
             // Repurpose image opacity slider as Decal Scale
-            sizeSlider.previousElementSibling.textContent = "Image Size";
+            if (sizeSlider.parentElement && sizeSlider.parentElement.previousElementSibling) {
+                sizeSlider.parentElement.previousElementSibling.textContent = "Image Size";
+            }
             sizeSlider.min = "10";
             sizeSlider.max = "100";
             sizeSlider.value = "30";

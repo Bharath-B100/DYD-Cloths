@@ -647,7 +647,7 @@ const Admin = {
 
                         const renderer = new THREE.WebGLRenderer({ antialias: true });
                         renderer.setSize(container.clientWidth, container.clientHeight);
-                        renderer.outputEncoding = THREE.sRGBEncoding;
+                        renderer.outputColorSpace = THREE.SRGBColorSpace;
                         renderer.toneMapping = THREE.ACESFilmicToneMapping;
                         container.appendChild(renderer.domElement);
 
