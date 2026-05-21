@@ -130,6 +130,12 @@ const Studio3D = {
                 // Find the main mesh to apply decals to
                 model.traverse((child) => {
                     if (child.isMesh) {
+                        const name = child.name.toLowerCase();
+                        if (name.includes('plane') || name.includes('ground') || name.includes('shadow') || name.includes('backdrop') || name.includes('studio') || name.includes('environment')) {
+                            child.visible = false;
+                            return;
+                        }
+
                         Studio3D.tshirtMeshes.push(child);
                         if (!Studio3D.tshirtMesh) Studio3D.tshirtMesh = child;
                         
@@ -389,16 +395,28 @@ const Studio3D = {
                     Studio3D.decalBaseScale.y * scaleVal, 
                     Studio3D.decalBaseScale.z
                 );
-                
                 // Update current active decal if any
-                if (Studio3D.currentDecalMesh && Studio3D.tshirtMesh) {
-                    // Need to reconstruct DecalGeometry with new scale.
-                    // To do this, we need the original intersect position.
-                    // For simplicity, let's just wait for them to click again to update, 
-                    // or we can raycast from center of bounding box.
-                    // This is a complex step. We'll leave it as setting the scale for the NEXT placement for now.
-                    // Better yet, update the mesh scale (which works if the underlying geometry is centered, but DecalGeometry is absolute).
-                    Studio3D.currentDecalMesh.scale.setScalar(scaleVal / 0.3); // Relative scale adjustment
+                if (Studio3D.currentDecalMesh && Studio3D.tshirtMeshes.length > 0) {
+                    const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === Studio3D.currentDecalMesh);
+                    if (configItem) {
+                        configItem.scale = Studio3D.decalScale.toArray();
+                        let targetMesh = Studio3D.tshirtMesh;
+                        if (configItem.targetMeshName) {
+                            Studio3D.tshirtMeshes.forEach(mesh => {
+                                if (mesh.name === configItem.targetMeshName) targetMesh = mesh;
+                            });
+                        }
+                        
+                        const newGeometry = new DecalGeometry(
+                            targetMesh,
+                            new THREE.Vector3().fromArray(configItem.position),
+                            new THREE.Euler().fromArray(configItem.orientation),
+                            Studio3D.decalScale
+                        );
+                        
+                        Studio3D.currentDecalMesh.geometry.dispose();
+                        Studio3D.currentDecalMesh.geometry = newGeometry;
+                    }
                 }
             });
         }

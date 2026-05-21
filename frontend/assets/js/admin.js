@@ -693,6 +693,12 @@ const Admin = {
                             
                             model.traverse((child) => {
                                 if (child.isMesh) {
+                                    const name = child.name.toLowerCase();
+                                    if (name.includes('plane') || name.includes('ground') || name.includes('shadow') || name.includes('backdrop') || name.includes('studio') || name.includes('environment')) {
+                                        child.visible = false;
+                                        return;
+                                    }
+
                                     if (!targetMesh) targetMesh = child;
                                     child.material = child.material.clone();
                                     if (config.shirtColor) {
