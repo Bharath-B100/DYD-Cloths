@@ -35,6 +35,10 @@ const orderItemSchema = new mongoose.Schema({
     image: {
         type: String,
         required: true
+    },
+    customDesign: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null
     }
 });
 
