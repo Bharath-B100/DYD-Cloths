@@ -35,6 +35,14 @@ const Studio3D = {
         quantity: 1
     },
 
+    textStyle: {
+        bold: false,
+        italic: false,
+        underline: false,
+        align: 'center',
+        color: '#111111'
+    },
+
     pricing: {
         '100% Cotton': 299,
         'Poly Cotton': 349,
@@ -58,7 +66,7 @@ const Studio3D = {
 
         // Camera Setup
         Studio3D.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-        Studio3D.camera.position.set(0, 0, 3);
+        Studio3D.camera.position.set(0, 0, 1.5);
 
         // Renderer Setup
         Studio3D.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -235,6 +243,7 @@ const Studio3D = {
 
         Studio3D.updateDecalPosition(decalMesh, intersect);
         Studio3D.updatePrice();
+        Studio3D.updateLayers();
     },
 
     updateDecalPosition: (decalMesh, intersect) => {
@@ -336,6 +345,7 @@ const Studio3D = {
                 Studio3D.currentTextureSrc = null;
                 Studio3D.currentTextureText = null;
                 Studio3D.updatePrice();
+                Studio3D.updateLayers();
             }
         });
         
@@ -383,35 +393,51 @@ const Studio3D = {
                 const text = document.getElementById('textInput').value;
                 if (!text) return;
                 
-                const fontFam = document.getElementById('fontFamily').value;
-                const fontColor = document.getElementById('textColorPicker').value;
-                
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = 1024;
-                canvas.height = 256;
-                
-                ctx.fillStyle = fontColor;
-                ctx.font = `bold 120px "${fontFam}"`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(text, 512, 128);
-                
-                const texture = new THREE.CanvasTexture(canvas);
-                texture.colorSpace = THREE.SRGBColorSpace;
-                
-                // set decal scale
-                const aspect = canvas.width / canvas.height;
-                Studio3D.decalBaseScale.set(0.3 * aspect, 0.3, 0.1);
-                Studio3D.decalScale.copy(Studio3D.decalBaseScale); // Reset scale
-                
-                Studio3D.currentTexture = texture;
-                Studio3D.currentTextureSrc = canvas.toDataURL('image/png');
-                Studio3D.currentTextureText = text;
-                
+                Studio3D.generateTextTexture();
                 document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your text. Drag to move it.';
             });
         }
+
+        // --- TEXT STYLING BUTTONS ---
+        const toggleStyle = (btnId, prop, value) => {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.addEventListener('click', () => {
+                if (typeof value === 'boolean') {
+                    Studio3D.textStyle[prop] = !Studio3D.textStyle[prop];
+                    btn.classList.toggle('active', Studio3D.textStyle[prop]);
+                } else {
+                    Studio3D.textStyle[prop] = value;
+                    document.querySelectorAll('.style-btns .style-btn').forEach(b => {
+                        if (b.id.startsWith('btnAlign')) b.classList.remove('active');
+                    });
+                    btn.classList.add('active');
+                }
+                Studio3D.generateTextTexture();
+            });
+        };
+
+        toggleStyle('btnBold', 'bold', true);
+        toggleStyle('btnItalic', 'italic', true);
+        toggleStyle('btnUnderline', 'underline', true);
+        toggleStyle('btnAlignLeft', 'align', 'left');
+        toggleStyle('btnAlignCenter', 'align', 'center');
+        toggleStyle('btnAlignRight', 'align', 'right');
+
+        const applyTextColor = (color) => {
+            Studio3D.textStyle.color = color;
+            document.getElementById('textColorPicker').value = color;
+            Studio3D.generateTextTexture();
+        };
+
+        const textColorPicker = document.getElementById('textColorPicker');
+        if (textColorPicker) {
+            textColorPicker.addEventListener('input', (e) => applyTextColor(e.target.value));
+        }
+
+        document.querySelectorAll('.qtc').forEach(btn => {
+            btn.addEventListener('click', () => applyTextColor(btn.dataset.color));
+        });
 
         // Add to Cart integration
         const btnAddToCart = document.getElementById('addToCartBtn');
@@ -454,11 +480,11 @@ const Studio3D = {
                         customDesign: customDesignInfo
                     };
 
-                    if (window.Cart && window.Cart.addItem) {
-                        await window.Cart.addItem(cartItem);
+                    if (window.CartManager && window.CartManager.addItem) {
+                        await window.CartManager.addItem(cartItem);
                         document.querySelector('.cart-sidebar').classList.add('active');
                         document.querySelector('.cart-overlay').classList.add('active');
-                        window.Cart.updateCartUI();
+                        if (window.CartManager.updateCartUI) window.CartManager.updateCartUI();
                     } else {
                         alert('Cart system not found.');
                     }
@@ -545,6 +571,132 @@ const Studio3D = {
     updateQtyDisplay: () => {
         document.getElementById('qtyDisplay').textContent = Studio3D.state.quantity;
         Studio3D.updatePrice();
+    },
+
+    updateLayers: () => {
+        const layersList = document.getElementById('layersList');
+        const layerCount = document.getElementById('layerCount');
+        if (!layersList || !layerCount) return;
+
+        layerCount.textContent = `(${Studio3D.decals.length})`;
+
+        if (Studio3D.decals.length === 0) {
+            layersList.innerHTML = '<p class="no-layers-msg">No elements yet. Add text or image.</p>';
+            return;
+        }
+
+        layersList.innerHTML = '';
+        Studio3D.decals.forEach((decal, index) => {
+            const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === decal);
+            if (!configItem) return;
+
+            const isText = !!configItem.textureText;
+            const name = isText ? `Text: "${configItem.textureText.substring(0,10)}${configItem.textureText.length>10?'...':''}"` : `Image Layer ${index + 1}`;
+            const icon = isText ? 'fa-font' : 'fa-image';
+
+            const div = document.createElement('div');
+            div.className = `layer-item ${Studio3D.currentDecalMesh === decal ? 'active' : ''}`;
+            div.style.cssText = `
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 10px; background: rgba(255,255,255,0.05); 
+                border-radius: 6px; margin-bottom: 8px; cursor: pointer;
+                border: 1px solid ${Studio3D.currentDecalMesh === decal ? 'var(--primary)' : 'transparent'};
+            `;
+            
+            div.innerHTML = `
+                <div class="layer-info" style="display:flex; align-items:center; gap:10px;">
+                    <i class="fas ${icon}" style="color:var(--text-muted)"></i>
+                    <span style="font-size:13px">${name}</span>
+                </div>
+                <button class="layer-delete-btn" title="Delete Layer" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button>
+            `;
+
+            div.querySelector('.layer-info').addEventListener('click', () => {
+                Studio3D.currentDecalMesh = decal;
+                // Update opacity/scale slider to match this layer's scale
+                const slider = document.getElementById('imageOpacity');
+                if (slider) {
+                    slider.value = Math.round((configItem.scale[0] / Studio3D.decalBaseScale.x) * 30);
+                    const sizeValue = document.getElementById('imageOpacityValue');
+                    if(sizeValue) sizeValue.textContent = slider.value + '%';
+                }
+                Studio3D.updateLayers();
+            });
+
+            div.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                Studio3D.scene.remove(decal);
+                Studio3D.decals = Studio3D.decals.filter(d => d !== decal);
+                Studio3D.customDesignConfig.decals = Studio3D.customDesignConfig.decals.filter(d => d.mesh !== decal);
+                if (Studio3D.currentDecalMesh === decal) Studio3D.currentDecalMesh = null;
+                Studio3D.updateLayers();
+                Studio3D.updatePrice();
+            });
+
+            layersList.appendChild(div);
+        });
+    },
+
+    generateTextTexture: () => {
+        const textInput = document.getElementById('textInput');
+        if (!textInput || !textInput.value) return;
+        const text = textInput.value;
+
+        const fontFam = document.getElementById('fontFamily') ? document.getElementById('fontFamily').value : 'Inter';
+        const fontColor = Studio3D.textStyle.color;
+        const weight = Studio3D.textStyle.bold ? 'bold' : 'normal';
+        const style = Studio3D.textStyle.italic ? 'italic' : 'normal';
+        const align = Studio3D.textStyle.align; 
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1024;
+        canvas.height = 256;
+
+        ctx.fillStyle = fontColor;
+        ctx.font = `${style} ${weight} 120px "${fontFam}"`;
+        ctx.textBaseline = 'middle';
+
+        if (align === 'left') {
+            ctx.textAlign = 'left';
+            ctx.fillText(text, 50, 128);
+        } else if (align === 'right') {
+            ctx.textAlign = 'right';
+            ctx.fillText(text, 974, 128);
+        } else {
+            ctx.textAlign = 'center';
+            ctx.fillText(text, 512, 128);
+        }
+
+        if (Studio3D.textStyle.underline) {
+            const metrics = ctx.measureText(text);
+            const w = metrics.width;
+            let startX = 512 - w/2;
+            if (align === 'left') startX = 50;
+            if (align === 'right') startX = 974 - w;
+            ctx.fillRect(startX, 190, w, 10);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+
+        Studio3D.currentTexture = texture;
+        Studio3D.currentTextureSrc = canvas.toDataURL('image/png');
+        Studio3D.currentTextureText = text;
+
+        const aspect = canvas.width / canvas.height;
+        Studio3D.decalBaseScale.set(0.3 * aspect, 0.3, 0.1);
+        Studio3D.decalScale.copy(Studio3D.decalBaseScale);
+
+        if (Studio3D.currentDecalMesh) {
+            const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === Studio3D.currentDecalMesh);
+            if (configItem && configItem.textureText) {
+                Studio3D.currentDecalMesh.material.map = texture;
+                Studio3D.currentDecalMesh.material.needsUpdate = true;
+                configItem.textureSrc = Studio3D.currentTextureSrc;
+                configItem.textureText = Studio3D.currentTextureText;
+            }
+        }
     }
 };
 

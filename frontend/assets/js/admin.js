@@ -643,7 +643,7 @@ const Admin = {
                         scene.background = new THREE.Color(0xf5f5f5);
 
                         const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-                        camera.position.set(0, 0, 3);
+                        camera.position.set(0, 0, 1.5);
 
                         const renderer = new THREE.WebGLRenderer({ antialias: true });
                         renderer.setSize(container.clientWidth, container.clientHeight);
