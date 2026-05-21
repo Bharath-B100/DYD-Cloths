@@ -475,6 +475,24 @@ const Admin = {
                                 <button class="custom-preview-btn" onclick="Admin.openDesignLightbox('${order._id}', ${order.items.indexOf(item)})">
                                     <i class="fas fa-search-plus"></i> View Design Options
                                 </button>
+                                ${(() => {
+                                    if (item.customDesign && item.customDesign.decals) {
+                                        const uploads = item.customDesign.decals.filter(d => d.textureSrc && !d.textureText);
+                                        if (uploads.length > 0) {
+                                            return `
+                                            <div style="margin-top: 10px;">
+                                                <small style="color: var(--text-muted); display: block; margin-bottom: 5px;">Uploaded Images (Click to download):</small>
+                                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                                    ${uploads.map((u, i) => `
+                                                        <img src="${u.textureSrc}" style="width: 60px; height: 60px; object-fit: contain; background: #fff; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; transition: 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1" onclick="Admin.downloadAsset('${u.textureSrc}', 'customer-upload-${order._id}-${i+1}.png')" title="Download Image ${i+1}">
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                            `;
+                                        }
+                                    }
+                                    return '';
+                                })()}
                             </div>
                         ` : ''}
                     </div>
@@ -621,14 +639,18 @@ const Admin = {
         if (!customDesign || !customDesign.decals) return;
         customDesign.decals.forEach((decal, index) => {
             if (decal.textureSrc) {
-                const a = document.createElement('a');
-                a.href = decal.textureSrc;
-                a.download = `custom-design-asset-${index + 1}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                Admin.downloadAsset(decal.textureSrc, `custom-design-asset-${index + 1}.png`);
             }
         });
+    },
+
+    downloadAsset: (src, filename) => {
+        const a = document.createElement('a');
+        a.href = src;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     },
 
     render3DPreview: (config, container) => {
