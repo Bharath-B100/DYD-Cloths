@@ -577,8 +577,12 @@ const Admin = {
 
         const closeBtn = document.getElementById('closeModalBtn');
         if (closeBtn) closeBtn.onclick = () => modal.classList.remove('active');
+
+        // Also wire up the X button in the modal header
+        const closeOrderModal = document.getElementById('closeOrderModal');
+        if (closeOrderModal) closeOrderModal.onclick = () => modal.classList.remove('active');
         
-        const printBtn = document.getElementById('btnPrintOrder');
+        const printBtn = document.getElementById('printOrderBtn');
         if (printBtn) {
             printBtn.onclick = () => {
                 const modalBody = document.getElementById('orderModalBody').innerHTML;
@@ -611,9 +615,12 @@ const Admin = {
 
         if (!lightbox || !img) return;
 
-        img.src = item.image;
-        if (titleEl) titleEl.textContent = item.name;
-        if (infoEl) infoEl.textContent = `Fabric/Color: ${item.color} | Size: ${item.size}`;
+        // Always show the cart snapshot in 2D view
+        const fullImg = item.image || '';
+        img.src = fullImg;
+        img.style.cssText = 'max-width:100%; max-height:70vh; display:block; margin:0 auto; border-radius:8px;';
+        if (titleEl) titleEl.textContent = item.name + ' – Design Preview';
+        if (infoEl) infoEl.textContent = `Color: ${item.color} | Size: ${item.size}`;
 
         const btn3D = document.getElementById('btnView3D');
         const btn2D = document.getElementById('btnView2D');

@@ -598,6 +598,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
 }
 
 .table-container td {
@@ -606,6 +607,18 @@
     font-size: 0.875rem;
     color: var(--text-primary);
     vertical-align: middle;
+}
+
+/* Status/Payment select dropdowns – fixed width so columns stay aligned */
+.table-container .status-select {
+    min-width: 130px;
+    width: 130px;
+}
+
+/* Actions column - centered */
+.table-container th:last-child,
+.table-container td:last-child {
+    text-align: center;
 }
 
 .table-container tr:last-child td {
@@ -1214,8 +1227,10 @@
     background: var(--bg-card);
     padding: 2rem;
     border-radius: var(--radius-2xl);
-    max-width: 90%;
-    max-height: 85vh;
+    width: 680px;
+    max-width: 95vw;
+    max-height: 92vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1235,21 +1250,25 @@
 }
 
 .lightbox-shirt-preview {
-    width: 380px;
-    height: 440px;
+    width: 100%;
+    min-height: 360px;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xl);
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     overflow: hidden;
+    padding: 1rem;
 }
 
 .lightbox-shirt-preview img {
-    max-width: 95%;
-    max-height: 95%;
+    max-width: 100%;
+    max-height: 420px;
     object-fit: contain;
+    display: block;
+    margin: 0 auto;
 }
 
 .lightbox-info {
@@ -1261,8 +1280,7 @@
 
 @media (max-width: 640px) {
     .lightbox-shirt-preview {
-        width: 280px;
-        height: 340px;
+        min-height: 260px;
     }
 }
 
