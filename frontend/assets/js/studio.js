@@ -97,7 +97,7 @@ const Studio3D = {
         // Container for model to allow rotation
         Studio3D.modelContainer = new THREE.Group();
         Studio3D.scene.add(Studio3D.modelContainer);
-        Studio3D.modelContainer.position.set(0, -0.4, 0);
+        Studio3D.modelContainer.position.set(0, 0, 0);
 
         // Load Model
         const loader = new GLTFLoader();
@@ -108,7 +108,24 @@ const Studio3D = {
                 
                 // Adjust model size and position
                 model.scale.set(1.5, 1.5, 1.5);
-                model.position.set(0, 0, 0);
+                
+                // Center model
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                model.position.x += (model.position.x - center.x);
+                model.position.y += (model.position.y - center.y);
+                model.position.z += (model.position.z - center.z);
+
+                // Auto-adjust camera
+                const newBox = new THREE.Box3().setFromObject(model);
+                const size = newBox.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = Studio3D.camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                
+                Studio3D.camera.position.set(0, 0, cameraZ * 1.3); // 30% margin
+                Studio3D.controls.target.set(0, 0, 0);
+                Studio3D.controls.update();
 
                 // Find the main mesh to apply decals to
                 model.traverse((child) => {

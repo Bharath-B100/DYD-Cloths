@@ -664,12 +664,31 @@ const Admin = {
 
                         const modelContainer = new THREE.Group();
                         scene.add(modelContainer);
-                        modelContainer.position.set(0, -0.4, 0);
+                        modelContainer.position.set(0, 0, 0);
 
                         const loader = new GLTFLoader();
                         loader.load('assets/oversized_t-shirt.glb', (gltf) => {
                             const model = gltf.scene;
                             model.scale.set(1.5, 1.5, 1.5);
+                            
+                            // Center model
+                            const box = new THREE.Box3().setFromObject(model);
+                            const center = box.getCenter(new THREE.Vector3());
+                            model.position.x += (model.position.x - center.x);
+                            model.position.y += (model.position.y - center.y);
+                            model.position.z += (model.position.z - center.z);
+
+                            // Auto-adjust camera
+                            const newBox = new THREE.Box3().setFromObject(model);
+                            const size = newBox.getSize(new THREE.Vector3());
+                            const maxDim = Math.max(size.x, size.y, size.z);
+                            const fov = camera.fov * (Math.PI / 180);
+                            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                            
+                            camera.position.set(0, 0, cameraZ * 1.3); // 30% margin
+                            controls.target.set(0, 0, 0);
+                            controls.update();
+
                             let targetMesh = null;
                             
                             model.traverse((child) => {
