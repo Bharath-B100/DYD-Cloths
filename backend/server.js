@@ -23,6 +23,7 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 // Create Express app
 const app = express();
 
@@ -102,6 +103,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api', subscriptionRoutes);
+app.use('/api/ai', aiRoutes);
 
 // SEO Routes (mounted at root)
 app.use('/', seoRoutes);

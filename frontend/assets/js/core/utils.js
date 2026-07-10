@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Utilities
+ * DYD-Clothes Utilities
  * Helper functions for formatting, notifications, and DOM manipulation.
  */
 
@@ -73,8 +73,8 @@ const Utils = {
         // Animate in
         setTimeout(() => toast.classList.add('show'), 10);
 
-        // Auto remove
-        const timeout = setTimeout(() => Utils.removeToast(toast), 5000);
+        // Auto remove (reduced duration for faster UI)
+        const timeout = setTimeout(() => Utils.removeToast(toast), 1500);
 
         // Manual close
         const closeBtn = toast.querySelector('.toast-close');

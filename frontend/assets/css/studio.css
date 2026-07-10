@@ -1,6 +1,6 @@
 /* =========================================== */
 /* studio.css - PROFESSIONAL DESIGN STUDIO v2 */
-/* DYD-Cloths - T-Shirt Customizer            */
+/* DYD-Clothes - T-Shirt Customizer            */
 /* =========================================== */
 
 /* =========================================== */
@@ -10,7 +10,8 @@
 .studio-page {
     background: var(--bg-secondary);
     min-height: 100vh;
-    overflow-x: hidden;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .studio-layout {
@@ -29,6 +30,10 @@
 }
 
 @media (max-width: 1024px) {
+    .studio-page {
+        height: auto;
+        overflow-y: auto;
+    }
     .studio-layout {
         grid-template-columns: 1fr;
         height: auto;
@@ -76,7 +81,7 @@
 
 /* Panel Header */
 .panel-header {
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary);
     position: sticky;
@@ -104,7 +109,7 @@
 /* =========================================== */
 
 .tool-section {
-    padding: 1rem 1.25rem;
+    padding: 0.5rem 1rem;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -119,7 +124,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.25rem;
 }
 
 /* =========================================== */
@@ -252,12 +257,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.25rem;
 }
 
 .color-dot {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
@@ -795,7 +800,7 @@
 /* =========================================== */
 
 .price-summary-panel {
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 1rem;
     margin-top: auto;
     border-top: 1px solid var(--border-color);
     background: var(--bg-secondary);
@@ -806,22 +811,22 @@
     justify-content: space-between;
     font-size: 0.8125rem;
     color: var(--text-secondary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .final-s {
     font-weight: 800;
     font-size: 1rem;
     color: var(--text-primary);
-    padding-top: 0.5rem;
+    padding-top: 0.25rem;
     border-top: 1px solid var(--border-color);
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
 }
 
 .studio-add-cart-btn {
     width: 100%;
-    padding: 0.875rem;
-    margin-top: 1rem;
+    padding: 0.6rem;
+    margin-top: 0.5rem;
     background: var(--gradient-primary);
     color: white;
     border: none;
@@ -847,8 +852,8 @@
     justify-content: center;
     gap: 0.5rem;
     width: 100%;
-    padding: 0.75rem;
-    margin-top: 0.75rem;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
     background: #25d366;
     color: white;
     border-radius: var(--radius-lg);

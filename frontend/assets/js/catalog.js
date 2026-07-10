@@ -55,7 +55,7 @@ const CatalogPage = {
                     <button class="btn-add" onclick="CatalogPage.addToCart('${product._id}')">
                         <i class="fas fa-cart-plus"></i> Add to Cart
                     </button>
-                    <button class="btn-details" onclick="window.location.href='product.html?id=${product._id}'">
+                    <button class="btn-details" onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">
                         <i class="fas fa-eye"></i> View Details
                     </button>
                 </div>

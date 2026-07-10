@@ -1,6 +1,6 @@
-# DYD-Cloths
+# DYD-Clothes
 
-DYD-Cloths is a complete T-shirt customisation and e-commerce platform. It features an interactive designer studio for custom T-shirts, a product shop, cart system, user authentication, and admin management tools.
+DYD-Clothes is a complete T-shirt customisation and e-commerce platform. It features an interactive designer studio for custom T-shirts, a product shop, cart system, user authentication, and admin management tools.
 
 ## Tech Stack
 - **Frontend:** Vanilla HTML, CSS, JavaScript

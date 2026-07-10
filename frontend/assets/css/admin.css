@@ -1,6 +1,6 @@
 /* =========================================== */
 /* admin.css - PROFESSIONAL ADMIN DASHBOARD v2 */
-/* DYD-Cloths - Admin Panel                    */
+/* DYD-Clothes - Admin Panel                    */
 /* =========================================== */
 
 /* =========================================== */
@@ -19,7 +19,7 @@
 
 .admin-sidebar {
     width: 280px;
-    background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
+    background: #0D0D0D;
     position: fixed;
     height: 100vh;
     left: 0;
@@ -242,7 +242,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg-secondary);
+    background: #FFFFFF;
+    color: var(--primary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     cursor: pointer;
@@ -719,11 +720,15 @@
 /* =========================================== */
 
 .actions {
-    display: flex;
-    gap: 0.5rem;
+    white-space: nowrap;
+    text-align: center;
 }
 
 .action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0.25rem;
     width: 32px;
     height: 32px;
     border-radius: var(--radius-lg);
@@ -1519,13 +1524,17 @@
         padding: 0.75rem;
     }
     
-    .actions {
-        flex-direction: column;
-        gap: 0.25rem;
-    }
+
     
     .action-btn {
         width: 28px;
         height: 28px;
     }
+}
+
+/* Make Add Product button smaller */
+.page-header .btn {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.875rem !important;
+    height: auto !important;
 }

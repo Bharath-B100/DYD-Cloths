@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Product Detail Page
+ * DYD-Clothes Product Detail Page
  * Manages product info, size selection, and reviews.
  */
 
@@ -13,12 +13,17 @@ const Product = {
 
     init: async () => {
         const params = Utils.getQueryParams();
-        if (!params.id) {
+        const id = params.id || localStorage.getItem('currentProductId');
+        
+        if (!id) {
             window.location.href = 'shop.html';
             return;
         }
+        
+        // Save it for future reloads just in case
+        localStorage.setItem('currentProductId', id);
 
-        await Product.fetchData(params.id);
+        await Product.fetchData(id);
         Product.setupEventListeners();
         Product.setupReviewForm();
     },

@@ -3,20 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Design Studio - DYD-Cloths</title>
+    <title>Design Studio - DYD-Clothes</title>
+    <link rel="icon" type="image/png" href="images/LOGO_DYD.png">
     <meta name="description" content="Create your custom T-shirt with our professional design studio. Add text, images, choose colors and sizes.">
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/studio.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <!-- Preload 3D Model -->
+    <link rel="preload" href="assets/oversized_t-shirt.glb" as="fetch" crossorigin="anonymous">
 </head>
 <body class="studio-page">
     <!-- Navbar -->
     <nav class="navbar">
         <div class="nav-container">
             <a href="index.html" class="logo">
-                <i class="fas fa-tshirt logo-icon"></i>
-                <span class="site-name">DYD-Cloths</span>
+                <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain;">
+                <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span>
             </a>
             <ul class="nav-links" id="navLinks">
                 <li><a href="index.html">Home</a></li>
@@ -159,6 +162,9 @@
                     <i class="fas fa-image"></i> Image
                 </button>
                 <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
+                <button class="toolbar-btn" id="btnAiMagic" title="AI Design Generation">
+                    <i class="fas fa-wand-magic-sparkles"></i> AI Magic
+                </button>
                 <div class="toolbar-separator"></div>
                 <button class="toolbar-btn" id="btnBringForward" title="Bring Forward">
                     <i class="fas fa-level-up-alt"></i>
@@ -254,6 +260,33 @@
                 </div>
             </div>
 
+            <!-- AI Magic Panel -->
+            <div class="tool-section" id="aiMagicPanel" style="display: none;">
+                <label class="tool-label">AI Design Generator</label>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">Describe what you want to see on your t-shirt, and our AI will generate it for you.</p>
+                <textarea class="studio-input" id="aiPromptInput" placeholder="E.g., A neon cyberpunk samurai cat..." style="min-height: 80px; resize: vertical; margin-bottom: 10px;"></textarea>
+                <button class="studio-btn-full" id="btnGenerateAi" style="background: var(--primary); color: #fff; border: none; margin-bottom: 10px;">
+                    <i class="fas fa-wand-magic-sparkles"></i> Generate Design
+                </button>
+                
+                <div id="aiLoadingIndicator" style="display: none; text-align: center; padding: 15px 0;">
+                    <i class="fas fa-spinner fa-spin fa-2x" style="color: var(--primary); margin-bottom: 8px;"></i>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Generating your masterpiece...</p>
+                </div>
+                
+                <div id="aiResultsArea" style="display: none; margin-top: 15px;">
+                    <label class="tool-label">Result</label>
+                    <div id="aiImageContainer" style="width: 100%; aspect-ratio: 1; background: var(--bg-card); border-radius: var(--radius-md); overflow: hidden; margin-bottom: 10px; border: 1px solid var(--border-color);">
+                        <img id="aiResultImage" src="" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                        <button class="studio-btn-full" id="btnAddAiToShirt" style="flex: 1; padding: 8px;">
+                            <i class="fas fa-plus"></i> Add to Shirt
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Image Properties -->
             <div class="tool-section" id="imagePropertiesPanel">
                 <label class="tool-label">Image Opacity</label>
@@ -261,6 +294,10 @@
                     <input type="range" id="imageOpacity" min="10" max="100" value="100" class="studio-range">
                     <span id="imageOpacityValue">100%</span>
                 </div>
+                
+                <button class="studio-btn-outline" id="btnRemoveBackground" style="margin-top: 15px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-eraser"></i> Remove Background
+                </button>
             </div>
 
             <!-- Layers -->
@@ -328,3 +365,4 @@
     <script src="assets/js/search.js"></script>
 </body>
 </html>
+

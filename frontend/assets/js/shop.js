@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Shop Page
+ * DYD-Clothes Shop Page
  * Handles product listing, searching, filtering, and sorting.
  */
 
@@ -76,7 +76,7 @@ const Shop = {
                 <div class="product-image">
                     <img src="${product.mainImage}" alt="${product.name}" 
                          onerror="this.src='https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'"
-                         onclick="window.location.href='product.html?id=${product._id}'">
+                         onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">
                     <button class="wishlist-btn ${inWishlist ? 'active' : ''}" 
                             onclick="Shop.toggleWishlist('${product._id}', this)">
                         <i class="${inWishlist ? 'fas' : 'far'} fa-heart"></i>
@@ -85,14 +85,14 @@ const Shop = {
                         <button class="btn-add" onclick="Shop.quickAddToCart('${product._id}')">
                             <i class="fas fa-cart-plus"></i> Add to Cart
                         </button>
-                        <button class="btn-details" onclick="window.location.href='product.html?id=${product._id}'">
+                        <button class="btn-details" onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">
                             <i class="fas fa-eye"></i> View Details
                         </button>
                     </div>
                 </div>
                 <div class="product-info">
                     <span class="product-category">${product.category || 'Uncategorized'}</span>
-                    <h3 class="product-title" onclick="window.location.href='product.html?id=${product._id}'">${Utils.escapeHtml(product.name || 'Product')}</h3>
+                    <h3 class="product-title" onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">${Utils.escapeHtml(product.name || 'Product')}</h3>
                     <div class="product-footer">
                         <span class="product-price">${Utils.formatINR(product.price)}</span>
                         ${product.rating ? `
@@ -169,7 +169,7 @@ const Shop = {
         const product = Shop.allProducts.find(p => p._id === productId);
         if (!product) return;
 
-        CartManager.addItem({
+        const added = CartManager.addItem({
             id: product._id,
             name: product.name,
             price: product.price,
@@ -180,7 +180,7 @@ const Shop = {
             maxStock: product.stock || 999
         });
         
-        if (typeof window.openCart === 'function') {
+        if (added && typeof window.openCart === 'function') {
             window.openCart();
         }
     },

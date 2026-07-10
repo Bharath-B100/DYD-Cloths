@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Checkout Logic
+ * DYD-Clothes Checkout Logic
  * Handles multi-step order placement and summary.
  */
 
@@ -17,6 +17,12 @@ const Checkout = {
     enableCod: true,
 
     init: async () => {
+        if (!AuthManager.isLoggedIn()) {
+            Utils.showToast('Please login to continue checkout', 'warning');
+            setTimeout(() => window.location.href = 'login.html', 1500);
+            return;
+        }
+
         if (CartManager.getCount() === 0) {
             Utils.showToast('Your cart is empty', 'warning');
             setTimeout(() => window.location.href = 'shop.html', 1500);
@@ -332,7 +338,8 @@ const Checkout = {
                 price: i.price,
                 size: i.size,
                 color: i.color,
-                image: i.image
+                image: i.image,
+                customDesign: i.customDesign
             })),
             shippingAddress: {
                 street: form.elements['address'].value,
@@ -348,7 +355,7 @@ const Checkout = {
             shippingFee,
             tax: 0,
             totalAmount,
-            notes: 'Order placed via DYD-Cloths website',
+            notes: 'Order placed via DYD-Clothes website',
             ...extraPayment
         });
 
@@ -389,7 +396,7 @@ const Checkout = {
                     key: payRes.data.key,
                     amount: payRes.data.amount,
                     currency: payRes.data.currency,
-                    name: 'DYD-Cloths',
+                    name: 'DYD-Clothes',
                     description: `Order #${orderRes.data.orderNumber}`,
                     image: 'https://via.placeholder.com/60x60/0f766e/ffffff?text=DYD',
                     order_id: payRes.data.id,

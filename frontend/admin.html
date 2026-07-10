@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - DYD-Cloths</title>
+    <title>Admin Panel - DYD-Clothes</title>
+    <link rel="icon" type="image/png" href="images/LOGO_DYD.png">
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,8 +15,8 @@
     <aside class="admin-sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="admin-logo">
-                <i class="fas fa-tshirt"></i>
-                <span>DYD-Cloths</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+                <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain; margin-bottom: 10px;">
+                <span>D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
             </div>
             <p style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 5px;">Admin Dashboard</p>
         </div>
@@ -91,13 +92,21 @@
                         </div>
                     </div>
                 </div>
-                <div class="user-menu" id="userMenu">
-                    <div class="user-avatar" id="userAvatar">A</div>
-                    <div class="user-info">
-                        <span class="user-name" id="userName">Admin User</span>
-                        <span class="user-role">Administrator</span>
+                <div class="user-menu-container" style="position: relative;">
+                    <div class="user-menu" id="userMenu" style="cursor: pointer;">
+                        <div class="user-avatar" id="userAvatar">A</div>
+                        <div class="user-info">
+                            <span class="user-name" id="userName">Admin User</span>
+                            <span class="user-role">Administrator</span>
+                        </div>
+                        <i class="fas fa-chevron-down"></i>
                     </div>
-                    <i class="fas fa-chevron-down"></i>
+                    <div class="user-dropdown-menu" id="userDropdownMenu" style="display: none; position: absolute; right: 0; top: 100%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); min-width: 180px; z-index: 1000; padding: 0.5rem 0; margin-top: 0.5rem;">
+                        <a href="profile.html" style="display: block; padding: 0.5rem 1rem; color: var(--text-primary); text-decoration: none;"><i class="fas fa-user" style="margin-right: 8px;"></i> Edit Profile</a>
+                        <a href="#" style="display: block; padding: 0.5rem 1rem; color: var(--text-primary); text-decoration: none;" onclick="document.querySelector('[data-page=\'settings\']').click(); document.getElementById('userDropdownMenu').style.display='none'; return false;"><i class="fas fa-cog" style="margin-right: 8px;"></i> Settings</a>
+                        <div style="height: 1px; background: var(--border-color); margin: 0.5rem 0;"></div>
+                        <a href="#" style="display: block; padding: 0.5rem 1rem; color: var(--danger); text-decoration: none;" onclick="AuthManager.logout(); return false;"><i class="fas fa-sign-out-alt" style="margin-right: 8px;"></i> Logout</a>
+                    </div>
                 </div>
             </div>
         </header>
@@ -310,5 +319,22 @@
     </script>
     <script src="assets/js/admin.js?v=20260521-3"></script>
     <script src="assets/js/search.js"></script>
+    <script>
+        // Toggle user dropdown menu
+        const userMenu = document.getElementById('userMenu');
+        const userDropdown = document.getElementById('userDropdownMenu');
+        
+        if (userMenu && userDropdown) {
+            userMenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userDropdown.style.display = userDropdown.style.display === 'none' ? 'block' : 'none';
+            });
+            
+            document.addEventListener('click', function() {
+                userDropdown.style.display = 'none';
+            });
+        }
+    </script>
 </body>
 </html>
+

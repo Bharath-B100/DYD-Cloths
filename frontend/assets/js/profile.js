@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Profile Page Logic
+ * DYD-Clothes Profile Page Logic
  * Handles user orders, wishlist, and settings.
  */
 

@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DYD-Cloths - Premium Custom T-Shirts</title>
+    <title>DYD-Clothes - Premium Custom T-Shirts</title>
+    <link rel="icon" type="image/png" href="images/LOGO_DYD.png">
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <!-- Preload 3D Model -->
+    <link rel="preload" href="assets/oversized_t-shirt.glb" as="fetch" crossorigin="anonymous">
 </head>
 <body>
     <!-- Modern Navbar -->
@@ -16,8 +19,8 @@
 
             <!-- Logo -->
             <a href="index.html" class="logo">
-                <i class="fas fa-tshirt logo-icon"></i>
-                <span class="site-name">DYD-Cloths</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+                <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain;">
+                <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
             </a>
 
             <div class="search-wrapper">
@@ -63,13 +66,51 @@
 
     </nav>
 
+    <!-- Flash Sale Banner -->
+    <div id="flashSaleBanner" class="flash-sale-banner">
+        <p>Summer Flash Sale: Free shipping on orders above 499! Use code <strong>SUMMER50</strong></p>
+    </div>
+
+    <style>
+        .flash-sale-banner {
+            background: linear-gradient(90deg, #ff416c, #ff4b2b);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 100;
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out, max-height 0.5s ease-out, padding 0.5s ease-out;
+            max-height: 50px;
+            overflow: hidden;
+        }
+        .flash-sale-banner.hide {
+            opacity: 0;
+            transform: translateY(-10px);
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            pointer-events: none;
+        }
+    </style>
+    <script>
+        // Hide the banner after 5 seconds
+        setTimeout(() => {
+            const banner = document.getElementById('flashSaleBanner');
+            if (banner) {
+                banner.classList.add('hide');
+            }
+        }, 5000);
+    </script>
+
     <!-- Hero Section -->
     <section class="hero" id="home">
         <div class="hero-container">
             <div class="hero-content">
                 <div class="breadcrumb">Home / Clothing / Custom T-shirts</div>
                 <div class="hero-badge"><i class="fas fa-bolt"></i> Custom printed apparel</div>
-                <h1 class="hero-title" id="heroTitle">Design Your <span class="text-gradient">Dream</span> Cloths</h1>
+                <h1 class="hero-title" id="heroTitle">Design Your <span class="text-gradient">Dream</span> Clothes</h1>
                 <p class="hero-subtitle" id="heroSubtitle">Premium quality custom t-shirts, hoodies and accessories designed by you, printed by us.</p>
                 
                 <div class="hero-stats">
@@ -243,9 +284,7 @@
             </div>
         </div>
     </section>
-    <button class="theme-toggle" id="themeToggle">
-    <i class="fas fa-moon"></i>
-</button>
+
 
 
 
@@ -378,8 +417,8 @@
             <div class="footer-grid">
                 <div class="footer-col">
                     <div class="logo">
-                        <i class="fas fa-tshirt"></i>
-                        <span class="site-name">DYD-Cloths</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Cloths</small>
+                        <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain;">
+                        <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
                     </div>
                     <p class="footer-description">Creating custom t-shirts that tell your story. Premium quality, fast delivery, and 100% satisfaction guaranteed.</p>
                     <div class="social-links">
@@ -435,7 +474,7 @@
             </div>
             
             <div class="footer-bottom">
-                <p>&copy; <span id="current-year">2024</span> DYD-Cloths - Design your Dream Cloths. All rights reserved.</p>
+                <p>&copy; <span id="current-year">2024</span> <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span> - Design your Dream Clothes. All rights reserved.</p>
                 <div class="payment-methods">
                     <i class="fab fa-cc-visa"></i>
                     <i class="fab fa-cc-mastercard"></i>

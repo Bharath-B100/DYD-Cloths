@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Cart Manager
+ * DYD-Clothes Cart Manager
  * Handles cart logic with localStorage persistence and stock validation.
  */
 
@@ -147,10 +147,12 @@ const CartManager = {
     },
 
     /**
-     * Save cart to localStorage
+     * Save cart to localStorage and Sync with Server
      */
     save: () => {
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(CartManager.items));
+        // Silently sync with server if logged in
+        CartManager.syncWithServer();
     },
 
     /**
@@ -171,17 +173,59 @@ const CartManager = {
      * Sync cart with server (for logged-in users)
      */
     syncWithServer: async () => {
-        if (!AuthManager.isLoggedIn()) return;
+        if (!window.AuthManager || !window.AuthManager.isLoggedIn()) return;
         
         try {
             const response = await API.post('/user/cart/sync', { 
                 cart: CartManager.items 
             });
-            if (response.success) {
+            if (response && response.success) {
                 console.log('Cart synced with server');
             }
         } catch (error) {
             console.error('Cart sync failed:', error);
+        }
+    },
+
+    /**
+     * Fetch cart from server (called on login/init)
+     */
+    fetchFromServer: async () => {
+        if (!window.AuthManager || !window.AuthManager.isLoggedIn()) return;
+        
+        try {
+            const response = await API.get('/user/cart');
+            if (response && response.success && response.data && response.data.cart) {
+                const serverCart = response.data.cart;
+                
+                // Merge server cart with local cart (server takes precedence for matching IDs)
+                const mergedMap = new Map();
+                
+                // Add local items first
+                CartManager.items.forEach(item => {
+                    const key = `${item.id}-${item.size}-${item.color}`;
+                    mergedMap.set(key, item);
+                });
+                
+                // Add/overwrite with server items
+                serverCart.forEach(item => {
+                    const key = `${item.id}-${item.size}-${item.color}`;
+                    mergedMap.set(key, item);
+                });
+                
+                CartManager.items = Array.from(mergedMap.values());
+                
+                // Save merged cart back to local storage (without triggering another sync)
+                localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(CartManager.items));
+                CartManager.notify();
+                
+                // If local had items not on server, sync them up
+                if (CartManager.items.length > serverCart.length) {
+                    CartManager.syncWithServer();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch cart from server:', error);
         }
     }
 };

@@ -3,7 +3,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 
-document.addEventListener('DOMContentLoaded', () => Studio3D.init());
+document.addEventListener('DOMContentLoaded', () => {
+    if (!AuthManager || !AuthManager.user) {
+        Utils.showToast('Please sign in to use the Design Studio', 'warning');
+        setTimeout(() => window.location.href = 'login.html', 1500);
+        return;
+    }
+    Studio3D.init();
+});
 
 const Studio3D = {
     scene: null,
@@ -577,6 +584,126 @@ const Studio3D = {
                 } finally {
                     btnAddToCart.innerHTML = btnOriginalText;
                     btnAddToCart.disabled = false;
+                }
+            });
+        }
+        // AI Magic Integration
+        const btnAiMagic = document.getElementById('btnAiMagic');
+        const aiMagicPanel = document.getElementById('aiMagicPanel');
+        const btnGenerateAi = document.getElementById('btnGenerateAi');
+        const btnAddAiToShirt = document.getElementById('btnAddAiToShirt');
+        const aiPromptInput = document.getElementById('aiPromptInput');
+        const aiLoadingIndicator = document.getElementById('aiLoadingIndicator');
+        const aiResultsArea = document.getElementById('aiResultsArea');
+        const aiResultImage = document.getElementById('aiResultImage');
+
+        if (btnAiMagic) {
+            btnAiMagic.addEventListener('click', () => {
+                // Hide other panels, show AI panel
+                document.getElementById('textPropertiesPanel').style.display = 'none';
+                document.getElementById('imagePropertiesPanel').style.display = 'none';
+                aiMagicPanel.style.display = 'block';
+            });
+        }
+
+        if (btnGenerateAi) {
+            btnGenerateAi.addEventListener('click', async () => {
+                const prompt = aiPromptInput.value.trim();
+                if (!prompt) {
+                    alert('Please enter a description for your design.');
+                    return;
+                }
+
+                btnGenerateAi.disabled = true;
+                aiLoadingIndicator.style.display = 'block';
+                aiResultsArea.style.display = 'none';
+
+                try {
+                    const res = await fetch('/api/ai/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt })
+                    });
+                    
+                    const data = await res.json();
+                    if (data.success && data.data && data.data.length > 0) {
+                        aiResultImage.src = data.data[0].url;
+                        aiResultsArea.style.display = 'block';
+                    } else {
+                        alert(data.message || 'Failed to generate image.');
+                    }
+                } catch (err) {
+                    console.error('AI Gen Error:', err);
+                    alert('An error occurred while generating the design.');
+                } finally {
+                    btnGenerateAi.disabled = false;
+                    aiLoadingIndicator.style.display = 'none';
+                }
+            });
+        }
+
+        if (btnAddAiToShirt) {
+            btnAddAiToShirt.addEventListener('click', () => {
+                const imgSrc = aiResultImage.src;
+                if (!imgSrc) return;
+
+                const loader = new THREE.TextureLoader();
+                loader.load(imgSrc, (texture) => {
+                    texture.colorSpace = THREE.SRGBColorSpace;
+                    Studio3D.currentTexture = texture;
+                    Studio3D.currentTextureSrc = imgSrc;
+                    Studio3D.currentTextureText = null;
+                    document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your generated design.';
+                });
+            });
+        }
+
+        // Remove Background
+        const btnRemoveBackground = document.getElementById('btnRemoveBackground');
+        if (btnRemoveBackground) {
+            btnRemoveBackground.addEventListener('click', async () => {
+                // If there's a selected decal with an image, we can remove its background
+                if (!Studio3D.currentDecalMesh) {
+                    alert('Please select an image on the t-shirt first.');
+                    return;
+                }
+                
+                const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === Studio3D.currentDecalMesh);
+                if (!configItem || !configItem.textureSrc || configItem.textureSrc.startsWith('data:image/svg+xml')) {
+                    alert('Please select a valid image (not text) to remove the background.');
+                    return;
+                }
+
+                const originalText = btnRemoveBackground.innerHTML;
+                btnRemoveBackground.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                btnRemoveBackground.disabled = true;
+
+                try {
+                    const res = await fetch('/api/ai/remove-bg', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageUrl: configItem.textureSrc })
+                    });
+                    
+                    const data = await res.json();
+                    if (data.success && data.url) {
+                        // Replace the texture
+                        const loader = new THREE.TextureLoader();
+                        loader.load(data.url, (texture) => {
+                            texture.colorSpace = THREE.SRGBColorSpace;
+                            Studio3D.currentDecalMesh.material.map = texture;
+                            Studio3D.currentDecalMesh.material.needsUpdate = true;
+                            configItem.textureSrc = data.url; // update the stored source
+                        });
+                    } else {
+                        alert(data.message || 'Failed to remove background.');
+                    }
+                } catch (err) {
+                    console.error('Remove BG Error:', err);
+                    alert('An error occurred while removing the background.');
+                } finally {
+                    btnRemoveBackground.innerHTML = originalText;
+                    btnRemoveBackground.disabled = false;
                 }
             });
         }

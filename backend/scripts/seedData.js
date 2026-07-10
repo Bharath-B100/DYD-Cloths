@@ -379,18 +379,10 @@ async function seedDatabase() {
         console.log(`   Orders: ${createdOrders.length}`);
         
         console.log('\n👑 Admin Credentials:');
-        console.log(`   Email: admin@tshirtco.com`);
-        console.log(`   Password: admin123`);
+        console.log(`   Email: ngtbharath@gmail.com`);
+        console.log(`   Password: admin@123`);
         console.log(`   Role: admin`);
-        
-        console.log('\n👤 Customer Credentials:');
-        console.log(`   Email: customer@example.com`);
-        console.log(`   Password: password123`);
-        console.log(`   Role: customer`);
-        
-        console.log(`\n📧 Additional Customers:`);
-        console.log(`   Email: jane.smith@example.com (password: password123)`);
-        console.log(`   Email: bob.wilson@example.com (password: password123)`);
+
         
         console.log('\n🔗 MongoDB Compass Connection:');
         console.log(`   Connect to: ${process.env.MONGODB_URI}`);

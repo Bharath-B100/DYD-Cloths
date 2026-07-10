@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Search with Autocomplete
+ * DYD-Clothes Search with Autocomplete
  */
 
 document.addEventListener('DOMContentLoaded', () => {

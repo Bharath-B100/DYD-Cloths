@@ -27,7 +27,8 @@ const {
     // Analytics
     getSalesAnalytics,
     getProductAnalytics,
-    exportData
+    exportData,
+    updateUserRole
 } = require('../controllers/adminController');
 
 const {
@@ -75,6 +76,7 @@ router.delete('/products/:id', deleteProduct);
 router.get('/customers', getAllCustomers);
 router.get('/customers/:id', getCustomerDetails);
 router.put('/customers/:id/status', updateCustomerStatus);
+router.put('/customers/:id/role', updateUserRole);
 router.delete('/customers/:id', deleteCustomer);
 
 // ======================

@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths API Service
+ * DYD-Clothes API Service
  * Handles all backend communications with token management and error handling.
  */
 

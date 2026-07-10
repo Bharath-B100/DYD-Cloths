@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Main Application
+ * DYD-Clothes Main Application
  * Global initialization and UI orchestration.
  */
 
@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
 const App = {
     init: () => {
         App.ensureNavbarControls();
-        App.setupTheme();
         App.setupNavigation();
         App.loadSettings();
         App.setupDesignFilters();
@@ -20,6 +19,9 @@ const App = {
         App.loadFeaturedProducts();
         App.setupNewsletter();
         window.AuthManager?.updateNavbarUI?.();
+        
+        // Fetch cart from server if logged in
+        if (window.CartManager) window.CartManager.fetchFromServer();
         
         // Sync cart count immediately
         App.updateCartBadge();
@@ -115,30 +117,7 @@ const App = {
         }
     },
 
-    /**
-     * Dark Mode Toggle & System Preference
-     */
-    setupTheme: () => {
-        const themeToggle = document.getElementById('themeToggle');
-        const savedTheme = localStorage.getItem('theme') || 
-            (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
-        const setTheme = (theme) => {
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-            if (themeToggle) {
-                themeToggle.innerHTML = theme === 'dark' ? 
-                    '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            }
-        };
-
-        setTheme(savedTheme);
-
-        themeToggle?.addEventListener('click', () => {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            setTheme(currentTheme === 'dark' ? 'light' : 'dark');
-        });
-    },
 
     /**
      * Mobile Menu and Scroll Effects

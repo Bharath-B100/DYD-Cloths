@@ -403,7 +403,7 @@ const getAllCustomers = async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
         
-        const filter = { role: 'customer' };
+        const filter = {};
         
         if (req.query.search) {
             filter.$or = [
@@ -428,8 +428,7 @@ const getAllCustomers = async (req, res) => {
         const customerStats = await Promise.all([
             User.countDocuments({ role: 'customer' }),
             User.countDocuments({ role: 'customer', isActive: true }),
-            Order.distinct('customer.email').then(emails => emails.length),
-            User.countDocuments({ role: 'customer', createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } })
+            User.countDocuments({ role: 'admin' })
         ]);
         
         res.status(200).json({
@@ -437,7 +436,7 @@ const getAllCustomers = async (req, res) => {
             data: {
                 customers,
                 pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
-                stats: { total: customerStats[0], active: customerStats[1], withOrders: customerStats[2], newThisMonth: customerStats[3] }
+                stats: { total: customerStats[0], active: customerStats[1], admins: customerStats[2] }
             }
         });
         
@@ -496,14 +495,65 @@ const updateCustomerStatus = async (req, res) => {
         
         const customer = await User.findByIdAndUpdate(id, { isActive }, { new: true, runValidators: true }).select('-password');
         
-        if (!customer || customer.role !== 'customer') {
-            return res.status(404).json({ success: false, error: 'Customer not found' });
+        if (!customer) {
+            return res.status(404).json({ success: false, error: 'User not found' });
         }
         
-        res.status(200).json({ success: true, message: `Customer ${isActive ? 'activated' : 'deactivated'} successfully`, data: customer });
+        if (customer.email === 'admin@tshirtco.com' && !isActive) {
+            return res.status(403).json({ success: false, error: 'Cannot deactivate the primary administrator' });
+        }
+        
+        res.status(200).json({ success: true, message: `User ${isActive ? 'activated' : 'deactivated'} successfully`, data: customer });
         
     } catch (error) {
         console.error('Update customer status error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// @desc    Update user role
+// @route   PUT /api/admin/customers/:id/role
+// @access  Private/Admin
+const updateUserRole = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { role } = req.body;
+        
+        if (!['admin', 'customer'].includes(role)) {
+            return res.status(400).json({ success: false, error: 'Invalid role' });
+        }
+        
+        const targetUser = await User.findById(id);
+        if (!targetUser) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        
+        // Protect the primary admin
+        if (targetUser.email === 'admin@tshirtco.com') {
+            return res.status(403).json({ success: false, error: 'Cannot change the role of the primary administrator' });
+        }
+        
+        // Enforce the 2-admin limit
+        if (role === 'admin' && targetUser.role !== 'admin') {
+            const adminCount = await User.countDocuments({ role: 'admin' });
+            if (adminCount >= 2) {
+                return res.status(403).json({ success: false, error: 'Maximum limit of 2 administrators reached.' });
+            }
+        }
+        
+        targetUser.role = role;
+        await targetUser.save();
+        
+        const updatedUser = await User.findById(id).select('-password');
+        
+        res.status(200).json({ 
+            success: true, 
+            message: `User role updated to ${role} successfully`, 
+            data: updatedUser 
+        });
+        
+    } catch (error) {
+        console.error('Update user role error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
@@ -517,12 +567,16 @@ const deleteCustomer = async (req, res) => {
         const { id } = req.params;
         const customer = await User.findById(id);
         
-        if (!customer || customer.role !== 'customer') {
-            return res.status(404).json({ success: false, error: 'Customer not found' });
+        if (!customer) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+        
+        if (customer.email === 'admin@tshirtco.com') {
+            return res.status(403).json({ success: false, error: 'Cannot delete the primary administrator' });
         }
         
         await User.findByIdAndDelete(id);
-        res.status(200).json({ success: true, message: 'Customer deleted successfully' });
+        res.status(200).json({ success: true, message: 'User deleted successfully' });
         
     } catch (error) {
         console.error('Delete customer error:', error);
@@ -710,5 +764,6 @@ module.exports = {
     deleteCustomer,
     getSalesAnalytics,
     getProductAnalytics,
-    exportData
+    exportData,
+    updateUserRole
 };

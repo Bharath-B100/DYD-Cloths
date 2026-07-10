@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Authentication Manager
+ * DYD-Clothes Authentication Manager
  * Manages user sessions, registration, and role-based access.
  */
 
@@ -35,14 +35,15 @@ const AuthManager = {
             if (result.success && result.token && user) {
                 AuthManager.setSession(result.token, user);
                 AuthManager.updateNavbarUI();
-                Utils.showToast(`Welcome back, ${user.name}!`, 'success');
+                Utils.showToast('loggedin successfully', 'success');
+                if (window.CartManager) window.CartManager.fetchFromServer();
                 AuthManager.redirectByRole(user);
                 return { success: true };
             }
 
             throw new Error('Login response was missing user details');
         } catch (error) {
-            Utils.showToast(error.message, 'error');
+            Utils.showToast('Wrong password or email!', 'error');
             return { success: false, error: error.message };
         }
     },
@@ -59,6 +60,7 @@ const AuthManager = {
                 AuthManager.setSession(result.token, user);
                 AuthManager.updateNavbarUI();
                 Utils.showToast(`Welcome, ${user.name}!`, 'success');
+                if (window.CartManager) window.CartManager.fetchFromServer();
                 setTimeout(() => AuthManager.redirectByRole(user), 800);
                 return { success: true };
             }
@@ -156,15 +158,16 @@ const AuthManager = {
         if (!desktopAuth && !mobileAuth) return;
 
         if (AuthManager.isLoggedIn()) {
-            const userName = AuthManager.user.name || AuthManager.user.email || 'Account';
-            const dashboardLink = AuthManager.isAdmin() ? 'admin.html' : 'profile.html';
-            const dashboardIcon = AuthManager.isAdmin() ? 'fa-user-shield' : 'fa-user';
+            const isUserAdmin = AuthManager.isAdmin();
+            const userName = isUserAdmin ? 'ADMIN' : (AuthManager.user.name || AuthManager.user.email || 'Account');
+            const dashboardLink = isUserAdmin ? 'admin.html' : 'profile.html';
+            const dashboardIcon = isUserAdmin ? 'fa-user-shield' : 'fa-user';
             
             const authHTML = `
                 <div class="user-dropdown">
                     <span class="user-greeting" title="${Utils.escapeHtml(userName)}"><i class="fas ${dashboardIcon}"></i> ${Utils.escapeHtml(userName)}</span>
                     <a href="${dashboardLink}" class="auth-link profile-link">Dashboard</a>
-                    <button class="auth-link logout-link navbar-logout-btn" type="button"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                    <button class="auth-link logout-link navbar-logout-btn" style="padding: 0.5rem 1rem;" type="button" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
             `;
             

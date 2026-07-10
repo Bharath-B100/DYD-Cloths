@@ -1,5 +1,5 @@
 /**
- * DYD-Cloths Admin Dashboard
+ * DYD-Clothes Admin Dashboard
  * Handles inventory, orders, and customer management.
  */
 
@@ -604,7 +604,7 @@ const Admin = {
             printBtn.onclick = () => {
                 const modalBody = document.getElementById('orderModalBody').innerHTML;
                 const printWindow = window.open('', '', 'height=600,width=800');
-                printWindow.document.write('<html><head><title>Print Order - DYD Cloths</title>');
+                printWindow.document.write('<html><head><title>Print Order - DYD Clothes</title>');
                 printWindow.document.write('<style>body { font-family: Arial, sans-serif; padding: 20px; } .order-item-row { display: flex; gap: 20px; border-bottom: 1px solid #ccc; padding: 15px 0; } img { max-width: 100px; border:1px solid #ddd; padding:5px; } .order-summary-card { margin-top: 20px; border-top: 2px solid #000; padding-top: 10px; font-weight:bold; } .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; } h4 { margin: 0 0 5px 0; } p { margin: 0; color: #555; }</style>');
                 printWindow.document.write('</head><body>');
                 printWindow.document.write(modalBody);
@@ -978,9 +978,13 @@ const Admin = {
                                 <td>${Utils.formatDate(c.createdAt)}</td>
                                 <td><span class="status-badge ${c.isActive !== false ? 'status-active' : 'status-inactive'}">${c.isActive !== false ? 'Active' : 'Banned'}</span></td>
                                 <td class="actions">
-                                    <button class="action-btn delete" onclick="Admin.deleteCustomer('${c._id}')" title="Delete Customer">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    ${c.role === 'admin' && c.email !== 'admin@tshirtco.com' ? 
+                                      `<button class="action-btn" onclick="Admin.updateRole('${c._id}', 'customer')" title="Revoke Admin"><i class="fas fa-user-minus"></i></button>` : 
+                                      (c.role !== 'admin' ? `<button class="action-btn" onclick="Admin.updateRole('${c._id}', 'admin')" title="Make Admin"><i class="fas fa-user-shield"></i></button>` : '')
+                                    }
+                                    ${c.email !== 'admin@tshirtco.com' ?
+                                        `<button class="action-btn delete" onclick="Admin.deleteCustomer('${c._id}')" title="Delete User"><i class="fas fa-trash"></i></button>` : ''
+                                    }
                                 </td>
                             </tr>
                         `).join('') : '<tr><td colspan="6" class="empty-state">No customers found</td></tr>'}
@@ -988,6 +992,25 @@ const Admin = {
                 </table>
             </div>
         `;
+    },
+    
+    updateRole: async (id, role) => {
+        if (role === 'admin' && !confirm('Are you sure you want to promote this user to admin?')) return;
+        if (role === 'customer' && !confirm('Are you sure you want to revoke admin access for this user?')) return;
+        
+        try {
+            const res = await API.put(`/admin/customers/${id}/role`, { role });
+            if (res.success) {
+                Utils.showToast(res.message, 'success');
+                Admin.renderCustomers();
+                Admin.loadDashboardData();
+            } else {
+                Utils.showToast(res.error || 'Failed to update role', 'error');
+            }
+        } catch (error) {
+            console.error('Role update error:', error);
+            Utils.showToast('Error updating role', 'error');
+        }
     },
 
     renderAnalytics: async () => {
