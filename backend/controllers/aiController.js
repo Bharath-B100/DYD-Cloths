@@ -12,48 +12,24 @@ exports.generateDesign = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Please provide a prompt' });
         }
 
-        const apiKey = process.env.OPENAI_API_KEY;
-        
-        if (!apiKey || apiKey === 'YOUR_OPENAI_API_KEY') {
-            console.log('No OpenAI API key provided. Returning mock generated image for testing.');
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            return res.status(200).json({
-                success: true,
-                data: [
-                    { url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop' }
-                ]
-            });
-        }
+        // Use Pollinations AI for free image generation based on prompt
+        const encodedPrompt = encodeURIComponent(prompt + ", t-shirt design, centered, clean background");
+        // We use a random seed to ensure different images for the same prompt
+        const seed = Math.floor(Math.random() * 1000000);
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?nologo=true&seed=${seed}&width=1024&height=1024`;
 
-        // Make real request to OpenAI DALL-E
-        const response = await axios.post(
-            'https://api.openai.com/v1/images/generations',
-            {
-                prompt: prompt,
-                n: 1,
-                size: '1024x1024',
-                model: 'dall-e-3' // or dall-e-2 depending on cost preference
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            data: response.data.data
+            data: [
+                { url: imageUrl }
+            ]
         });
 
     } catch (error) {
-        console.error('AI Generation Error:', error.response?.data || error.message);
+        console.error('AI Generation Error:', error.message);
         res.status(500).json({
             success: false,
-            message: 'Failed to generate design. ' + (error.response?.data?.error?.message || error.message)
+            message: 'Failed to generate design. ' + error.message
         });
     }
 };

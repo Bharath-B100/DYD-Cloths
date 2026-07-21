@@ -287,12 +287,30 @@
                 </div>
             </div>
 
-            <!-- Image Properties -->
+            <!-- Image / Design Properties -->
             <div class="tool-section" id="imagePropertiesPanel">
-                <label class="tool-label">Image Opacity</label>
+                <label class="tool-label">Design Scale</label>
                 <div class="range-row">
-                    <input type="range" id="imageOpacity" min="10" max="100" value="100" class="studio-range">
-                    <span id="imageOpacityValue">100%</span>
+                    <input type="range" id="designScale" min="10" max="200" value="80" class="studio-range">
+                    <span id="designScaleValue">80</span>
+                </div>
+                
+                <label class="tool-label" style="margin-top:10px">Position X (Horizontal)</label>
+                <div class="range-row">
+                    <input type="range" id="designPosX" min="0" max="100" value="50" class="studio-range">
+                    <span id="designPosXValue">50</span>
+                </div>
+                
+                <label class="tool-label" style="margin-top:10px">Position Y (Vertical)</label>
+                <div class="range-row">
+                    <input type="range" id="designPosY" min="0" max="100" value="50" class="studio-range">
+                    <span id="designPosYValue">50</span>
+                </div>
+                
+                <label class="tool-label" style="margin-top:10px">Rotation (Degrees)</label>
+                <div class="range-row">
+                    <input type="range" id="designRot" min="-180" max="180" value="0" class="studio-range">
+                    <span id="designRotValue">0</span>
                 </div>
                 
                 <button class="studio-btn-outline" id="btnRemoveBackground" style="margin-top: 15px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -361,7 +379,7 @@
         }
     </script>
     <script src="assets/js/main.js"></script>
-    <script type="module" src="assets/js/studio.js?v=20260521-3"></script>
+    <script type="module" src="assets/js/studio.js?v=20260710-color-fix"></script>
     <script src="assets/js/search.js"></script>
 </body>
 </html>

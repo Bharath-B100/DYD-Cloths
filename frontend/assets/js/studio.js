@@ -1,7 +1,49 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
+
+// --- Utility: Print Zone UV Computation ---
+function computePrintZoneUVs(geometry, worldMatrix) {
+    const posAttr = geometry.getAttribute('position');
+    const normalAttr = geometry.getAttribute('normal');
+    const uvAttr = geometry.getAttribute('uv');
+    const index = geometry.getIndex();
+    
+    let minU = 1, minV = 1, maxU = 0, maxV = 0;
+    
+    const count = index ? index.count : posAttr.count;
+    
+    for (let i = 0; i < count; i += 3) {
+        const a = index ? index.getX(i) : i;
+        const b = index ? index.getX(i+1) : i+1;
+        const c = index ? index.getX(i+2) : i+2;
+        
+        // Check normal
+        const nA = new THREE.Vector3(normalAttr.getX(a), normalAttr.getY(a), normalAttr.getZ(a));
+        nA.transformDirection(worldMatrix); // Get world normal
+        
+        // If face is roughly pointing forward (Z > 0.5)
+        if (nA.z > 0.1) {
+            const uA = uvAttr.getX(a), vA = uvAttr.getY(a);
+            const uB = uvAttr.getX(b), vB = uvAttr.getY(b);
+            const uC = uvAttr.getX(c), vC = uvAttr.getY(c);
+            
+            minU = Math.min(minU, uA, uB, uC);
+            maxU = Math.max(maxU, uA, uB, uC);
+            minV = Math.min(minV, vA, vB, vC);
+            maxV = Math.max(maxV, vA, vB, vC);
+        }
+    }
+    
+    // Add small padding
+    return { 
+        u0: Math.max(0, minU - 0.05), 
+        v0: Math.max(0, minV - 0.05), 
+        u1: Math.min(1, maxU + 0.05), 
+        v1: Math.min(1, maxV + 0.05) 
+    };
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!AuthManager || !AuthManager.user) {
@@ -20,20 +62,22 @@ const Studio3D = {
     tshirtMesh: null,
     tshirtMeshes: [],
     modelContainer: null,
-    decals: [],
-    customDesignConfig: { decals: [] },
     
-    currentTexture: null,
-    currentTextureSrc: null,
-    currentTextureText: null,
-    currentDecalMesh: null,
-    decalBaseScale: new THREE.Vector3(0.3, 0.3, 0.1),
-    decalScale: new THREE.Vector3(0.3, 0.3, 0.1), // Initial size of decal
+    // Canvas Texture System
+    printCanvas: null,
+    printCtx: null,
+    printTexture: null,
+    printZoneUV: null,
     
-    raycaster: new THREE.Raycaster(),
-    mouse: new THREE.Vector2(),
-    
-    isDraggingDecal: false,
+    // Design Overlay State
+    designImage: null,    // The HTMLImageElement of the uploaded/AI design
+    isDraggingDesign: false, // For mouse drag
+    designState: {
+        x: 0.5,           // Center X in print zone (0 to 1)
+        y: 0.5,           // Center Y in print zone (0 to 1)
+        scale: 0.8,
+        rotation: 0
+    },
 
     state: {
         shirtColor: '#ffffff',
@@ -140,8 +184,20 @@ const Studio3D = {
                 Studio3D.camera.position.set(0, 0, cameraZ * 1.3); // 30% margin
                 Studio3D.controls.target.set(0, 0, 0);
                 Studio3D.controls.update();
+                
+                // Initialize CanvasTexture
+                Studio3D.printCanvas = document.createElement('canvas');
+                Studio3D.printCanvas.width = 2048;
+                Studio3D.printCanvas.height = 2048;
+                Studio3D.printCtx = Studio3D.printCanvas.getContext('2d');
+                Studio3D.printCtx.fillStyle = Studio3D.state.shirtColor;
+                Studio3D.printCtx.fillRect(0, 0, 2048, 2048);
+                
+                Studio3D.printTexture = new THREE.CanvasTexture(Studio3D.printCanvas);
+                Studio3D.printTexture.colorSpace = THREE.SRGBColorSpace;
+                Studio3D.printTexture.flipY = false;
 
-                // Find the main mesh to apply decals to
+                // Find the main mesh to apply canvas texture to
                 model.traverse((child) => {
                     if (child.isMesh) {
                         const name = child.name.toLowerCase();
@@ -150,18 +206,28 @@ const Studio3D = {
                             return;
                         }
 
+                        // Compute UV print zone
+                        child.updateMatrixWorld();
+                        if (!Studio3D.printZoneUV) {
+                            Studio3D.printZoneUV = computePrintZoneUVs(child.geometry, child.matrixWorld);
+                            console.log('Computed Print Zone UVs:', Studio3D.printZoneUV);
+                        }
+
                         Studio3D.tshirtMeshes.push(child);
                         if (!Studio3D.tshirtMesh) Studio3D.tshirtMesh = child;
                         
-                        // Clone the material so we can change its color freely
-                        child.material = child.material.clone();
-                        child.material.color.setHex(0xffffff);
-                        child.material.roughness = 0.8;
-                        child.material.side = THREE.DoubleSide;
+                        // Replace material with one that uses our CanvasTexture
+                        child.material = new THREE.MeshStandardMaterial({
+                            map: Studio3D.printTexture,
+                            color: 0xffffff, // White because canvas handles color
+                            roughness: 0.8,
+                            side: THREE.DoubleSide
+                        });
                     }
                 });
 
                 Studio3D.modelContainer.add(model);
+                Studio3D.renderDesignToTexture(); // Initial draw
                 document.getElementById('loadingOverlay').style.display = 'none';
             },
             (xhr) => {
@@ -175,9 +241,11 @@ const Studio3D = {
 
         // Events for interaction
         window.addEventListener('resize', Studio3D.onWindowResize);
-        container.addEventListener('pointerdown', Studio3D.onPointerDown);
-        container.addEventListener('pointermove', Studio3D.onPointerMove);
-        container.addEventListener('pointerup', Studio3D.onPointerUp);
+        const canvasDom = Studio3D.renderer.domElement;
+        canvasDom.addEventListener('pointerdown', Studio3D.onPointerDown);
+        canvasDom.addEventListener('pointermove', Studio3D.onPointerMove);
+        canvasDom.addEventListener('pointerup', Studio3D.onPointerUp);
+        canvasDom.addEventListener('pointerleave', Studio3D.onPointerUp);
 
         // Animation Loop
         Studio3D.renderer.setAnimationLoop(() => {
@@ -195,54 +263,8 @@ const Studio3D = {
     },
 
     /* ================================================
-       INTERACTION & DECALS
+       INTERACTION (DRAGGING ON MESH)
     ================================================ */
-    onPointerDown: (e) => {
-        if (!Studio3D.tshirtMesh) return;
-
-        // Check if we clicked on an existing decal to start dragging
-        Studio3D.updateRaycaster(e);
-        const intersects = Studio3D.raycaster.intersectObjects(Studio3D.decals);
-        
-        if (intersects.length > 0) {
-            // Clicked a decal, start dragging
-            Studio3D.controls.enabled = false;
-            Studio3D.isDraggingDecal = true;
-            Studio3D.currentDecalMesh = intersects[0].object;
-            return;
-        }
-
-        // If not dragging an existing decal and we have a new texture, try placing it
-        if (Studio3D.currentTexture) {
-            const shirtIntersects = Studio3D.raycaster.intersectObjects(Studio3D.tshirtMeshes);
-            if (shirtIntersects.length > 0) {
-                Studio3D.placeDecal(shirtIntersects[0]);
-                // Set as active decal for properties (like scale)
-                Studio3D.currentDecalMesh = Studio3D.decals[Studio3D.decals.length - 1];
-                Studio3D.isDraggingDecal = true;
-                Studio3D.controls.enabled = false;
-            }
-        }
-    },
-
-    onPointerMove: (e) => {
-        if (!Studio3D.isDraggingDecal || !Studio3D.currentDecalMesh || !Studio3D.tshirtMesh) return;
-
-        // Update raycaster to new mouse position
-        Studio3D.updateRaycaster(e);
-        const shirtIntersects = Studio3D.raycaster.intersectObjects(Studio3D.tshirtMeshes);
-
-        if (shirtIntersects.length > 0) {
-            // Move the decal by completely re-generating its geometry at the new spot
-            Studio3D.updateDecalPosition(Studio3D.currentDecalMesh, shirtIntersects[0]);
-        }
-    },
-
-    onPointerUp: (e) => {
-        Studio3D.isDraggingDecal = false;
-        Studio3D.controls.enabled = true; // Re-enable orbit controls
-    },
-
     updateRaycaster: (e) => {
         const container = document.getElementById('threeCanvasContainer');
         const rect = container.getBoundingClientRect();
@@ -251,71 +273,114 @@ const Studio3D = {
         Studio3D.raycaster.setFromCamera(Studio3D.mouse, Studio3D.camera);
     },
 
-    placeDecal: (intersect) => {
-        if (!Studio3D.currentTexture) return;
+    onPointerDown: (e) => {
+        if (!Studio3D.tshirtMesh || !Studio3D.designImage) return;
 
-        const material = new THREE.MeshPhongMaterial({
-            map: Studio3D.currentTexture,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-            polygonOffset: true,
-            polygonOffsetFactor: -10, // Pull decal forward to prevent z-fighting
-            polygonOffsetUnits: -10,
-            wireframe: false
-        });
-
-        const decalMesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
-        Studio3D.scene.add(decalMesh);
-        Studio3D.decals.push(decalMesh);
-
-        Studio3D.customDesignConfig.decals.push({
-            mesh: decalMesh,
-            textureSrc: Studio3D.currentTextureSrc,
-            textureText: Studio3D.currentTextureText,
-            position: [0, 0, 0],
-            orientation: [0, 0, 0],
-            scale: Studio3D.decalScale.toArray()
-        });
-
-        Studio3D.updateDecalPosition(decalMesh, intersect);
-        Studio3D.updatePrice();
-        Studio3D.updateLayers();
+        Studio3D.updateRaycaster(e);
+        const intersects = Studio3D.raycaster.intersectObjects(Studio3D.tshirtMeshes);
+        
+        if (intersects.length > 0) {
+            Studio3D.controls.enabled = false;
+            Studio3D.isDraggingDesign = true;
+            Studio3D.updateDesignPositionFromUV(intersects[0].uv);
+        }
     },
 
-    updateDecalPosition: (decalMesh, intersect) => {
-        const position = intersect.point;
-        const intersectedMesh = intersect.object;
-        // Orient the decal towards the normal of the surface
-        const normal = intersect.face.normal.clone();
-        normal.transformDirection(intersectedMesh.matrixWorld);
-        
-        const orientation = new THREE.Euler();
-        const dummy = new THREE.Object3D();
-        dummy.position.copy(position);
-        
-        // Sometimes normals can point inward depending on the model
-        // So we just orient the dummy properly
-        dummy.lookAt(position.clone().add(normal));
-        orientation.copy(dummy.rotation);
+    onPointerMove: (e) => {
+        if (!Studio3D.isDraggingDesign) return;
 
-        const decalGeometry = new DecalGeometry(
-            intersectedMesh,
-            position,
-            orientation,
-            Studio3D.decalScale
-        );
+        Studio3D.updateRaycaster(e);
+        const intersects = Studio3D.raycaster.intersectObjects(Studio3D.tshirtMeshes);
+
+        if (intersects.length > 0) {
+            Studio3D.updateDesignPositionFromUV(intersects[0].uv);
+        }
+    },
+
+    onPointerUp: (e) => {
+        Studio3D.isDraggingDesign = false;
+        if(Studio3D.controls) Studio3D.controls.enabled = true;
+    },
+
+    updateDesignPositionFromUV: (uv) => {
+        if (!Studio3D.printZoneUV) return;
+
+        const u0 = Studio3D.printZoneUV.u0;
+        const u1 = Studio3D.printZoneUV.u1;
+        const v0 = Studio3D.printZoneUV.v0;
+        const v1 = Studio3D.printZoneUV.v1;
+
+        let nx = (uv.x - u0) / (u1 - u0);
+        // Canvas is Y-down, but UV might be Y-up. Let's map it so dragging follows the mouse.
+        // We'll invert it if it feels backward, usually 1 - ny works for UV -> canvas Y mapping
+        let ny = 1.0 - ((uv.y - v0) / (v1 - v0)); 
+
+        // Clamp to 0-1
+        nx = Math.max(0, Math.min(1, nx));
+        ny = Math.max(0, Math.min(1, ny));
+
+        Studio3D.designState.x = nx;
+        Studio3D.designState.y = ny;
+
+        // Update UI sliders to reflect new position
+        const sliderX = document.getElementById('designPosX');
+        const valX = document.getElementById('designPosXValue');
+        if(sliderX) { sliderX.value = Math.round(nx * 100); if(valX) valX.textContent = Math.round(nx * 100); }
+
+        const sliderY = document.getElementById('designPosY');
+        const valY = document.getElementById('designPosYValue');
+        if(sliderY) { sliderY.value = Math.round(ny * 100); if(valY) valY.textContent = Math.round(ny * 100); }
+
+        Studio3D.renderDesignToTexture();
+    },
+
+    /* ================================================
+       CANVAS TEXTURE RENDERING
+    ================================================ */
+    renderDesignToTexture: () => {
+        if (!Studio3D.printCtx) return;
         
-        decalMesh.geometry.dispose(); // clean up old geometry
-        decalMesh.geometry = decalGeometry;
+        // 1. Fill base shirt color
+        Studio3D.printCtx.fillStyle = Studio3D.state.shirtColor;
+        Studio3D.printCtx.fillRect(0, 0, 2048, 2048);
         
-        // Update config
-        const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === decalMesh);
-        if (configItem) {
-            configItem.position = position.toArray();
-            configItem.orientation = orientation.toArray();
-            configItem.scale = Studio3D.decalScale.toArray();
-            configItem.targetMeshName = intersectedMesh.name;
+        // 2. Draw design if present
+        if (Studio3D.designImage && Studio3D.printZoneUV) {
+            const ctx = Studio3D.printCtx;
+            ctx.save();
+            
+            // The print zone in pixels (2048x2048 canvas)
+            const u0 = Studio3D.printZoneUV.u0;
+            const v0 = Studio3D.printZoneUV.v0;
+            const u1 = Studio3D.printZoneUV.u1;
+            const v1 = Studio3D.printZoneUV.v1;
+            
+            const zWidth = (u1 - u0) * 2048;
+            const zHeight = (v1 - v0) * 2048;
+            
+            // Center of design
+            const cX = u0 * 2048 + zWidth * Studio3D.designState.x;
+            // WebGL V is usually bottom-up, so V=0 is bottom, V=1 is top.
+            // On a flipY=false canvas, Y=0 is bottom, Y=2048 is top.
+            const cY = v0 * 2048 + zHeight * Studio3D.designState.y; 
+            
+            ctx.translate(cX, cY);
+            ctx.rotate(Studio3D.designState.rotation * Math.PI / 180);
+            
+            // Scale: default size is 50% of the print zone width
+            const baseSize = zWidth * 0.5;
+            const dw = baseSize * Studio3D.designState.scale;
+            const dh = dw * (Studio3D.designImage.height / Studio3D.designImage.width);
+            
+            // Invert Y drawing if needed (since canvas is 2D and ThreeJS might map it upside down if flipY is false)
+            ctx.scale(1, -1);
+            
+            ctx.drawImage(Studio3D.designImage, -dw/2, -dh/2, dw, dh);
+            ctx.restore();
+        }
+        
+        if (Studio3D.printTexture) {
+            Studio3D.printTexture.needsUpdate = true;
         }
     },
 
@@ -382,13 +447,11 @@ const Studio3D = {
             document.getElementById(inputId).click();
         });
 
-        // Delete Decal
+        // Delete Layer
         document.getElementById('btnDeleteSelected').addEventListener('click', () => {
-            if (Studio3D.currentDecalMesh) {
-                Studio3D.scene.remove(Studio3D.currentDecalMesh);
-                Studio3D.decals = Studio3D.decals.filter(d => d !== Studio3D.currentDecalMesh);
-                Studio3D.customDesignConfig.decals = Studio3D.customDesignConfig.decals.filter(d => d.mesh !== Studio3D.currentDecalMesh);
-                Studio3D.currentDecalMesh = null;
+            if (confirm('Remove the current design?')) {
+                Studio3D.designImage = null;
+                Studio3D.renderDesignToTexture();
                 Studio3D.updatePrice();
             }
         });
@@ -396,66 +459,30 @@ const Studio3D = {
         // Clear Canvas
         document.getElementById('btnClearCanvas').addEventListener('click', () => {
             if (confirm('Clear all images from the T-shirt?')) {
-                Studio3D.decals.forEach(d => Studio3D.scene.remove(d));
-                Studio3D.decals = [];
-                Studio3D.customDesignConfig.decals = [];
-                Studio3D.currentDecalMesh = null;
-                Studio3D.currentTexture = null;
-                Studio3D.currentTextureSrc = null;
-                Studio3D.currentTextureText = null;
+                Studio3D.designImage = null;
+                Studio3D.renderDesignToTexture();
                 Studio3D.updatePrice();
                 Studio3D.updateLayers();
             }
         });
         
-        // Decal Size Slider (using font size slider for now or we can map image opacity to scale)
-        const sizeSlider = document.getElementById('imageOpacity');
-        const sizeValue = document.getElementById('imageOpacityValue');
-        if(sizeSlider) {
-            // Repurpose image opacity slider as Decal Scale
-            if (sizeSlider.parentElement && sizeSlider.parentElement.previousElementSibling) {
-                sizeSlider.parentElement.previousElementSibling.textContent = "Image Size";
+        // Design Transformation Sliders
+        const setupSlider = (id, prop, isMultiplier = 1) => {
+            const slider = document.getElementById(id);
+            const valueSpan = document.getElementById(`${id}Value`);
+            if (slider) {
+                slider.addEventListener('input', (e) => {
+                    Studio3D.designState[prop] = parseFloat(e.target.value) * isMultiplier;
+                    if (valueSpan) valueSpan.textContent = e.target.value;
+                    Studio3D.renderDesignToTexture();
+                });
             }
-            sizeSlider.min = "10";
-            sizeSlider.max = "100";
-            sizeSlider.value = "30";
-            sizeValue.textContent = "30%";
-            
-            sizeSlider.addEventListener('input', (e) => {
-                sizeValue.textContent = e.target.value + '%';
-                const scaleVal = e.target.value / 30; // Assuming 30 is the default base 1.0 multiplier
-                
-                // Preserve aspect ratio and keep projector Z depth constant
-                Studio3D.decalScale.set(
-                    Studio3D.decalBaseScale.x * scaleVal, 
-                    Studio3D.decalBaseScale.y * scaleVal, 
-                    Studio3D.decalBaseScale.z
-                );
-                // Update current active decal if any
-                if (Studio3D.currentDecalMesh && Studio3D.tshirtMeshes.length > 0) {
-                    const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === Studio3D.currentDecalMesh);
-                    if (configItem) {
-                        configItem.scale = Studio3D.decalScale.toArray();
-                        let targetMesh = Studio3D.tshirtMesh;
-                        if (configItem.targetMeshName) {
-                            Studio3D.tshirtMeshes.forEach(mesh => {
-                                if (mesh.name === configItem.targetMeshName) targetMesh = mesh;
-                            });
-                        }
-                        
-                        const newGeometry = new DecalGeometry(
-                            targetMesh,
-                            new THREE.Vector3().fromArray(configItem.position),
-                            new THREE.Euler().fromArray(configItem.orientation),
-                            Studio3D.decalScale
-                        );
-                        
-                        Studio3D.currentDecalMesh.geometry.dispose();
-                        Studio3D.currentDecalMesh.geometry = newGeometry;
-                    }
-                }
-            });
-        }
+        };
+        
+        setupSlider('designScale', 'scale', 0.01);
+        setupSlider('designPosX', 'x', 0.01);
+        setupSlider('designPosY', 'y', 0.01);
+        setupSlider('designRot', 'rotation', 1);
 
         // Add Text logic
         const btnApplyText = document.getElementById('btnApplyText');
@@ -519,44 +546,19 @@ const Studio3D = {
                 btnAddToCart.disabled = true;
 
                 try {
-                    // Helper: render a specific side and capture screenshot
-                    const captureScreenshot = (side) => new Promise(resolve => {
-                        Studio3D.modelContainer.rotation.y = side === 'front' ? 0 : Math.PI;
-                        Studio3D.controls.update();
-                        requestAnimationFrame(() => {
-                            Studio3D.renderer.render(Studio3D.scene, Studio3D.camera);
-                            resolve(Studio3D.renderer.domElement.toDataURL('image/png'));
-                        });
-                    });
-
-                    const frontScreenshot = await captureScreenshot('front');
-                    const backScreenshot = await captureScreenshot('back');
-
-                    // Restore current side
-                    Studio3D.setSide(Studio3D.currentSide);
-
-                    // Clean decals data for storage
-                    const cleanDecals = Studio3D.customDesignConfig.decals.map(d => ({
-                        textureSrc: d.textureSrc,
-                        textureText: d.textureText,
-                        position: d.position,
-                        orientation: d.orientation,
-                        scale: d.scale,
-                        targetMeshName: d.targetMeshName
-                    }));
+                    const frontScreenshot = Studio3D.renderer.domElement.toDataURL('image/png');
+                    const backScreenshot = Studio3D.renderer.domElement.toDataURL('image/png');
 
                     const customDesignInfo = {
                         isCustom: true,
                         shirtColor: Studio3D.state.shirtColor,
                         fabric: Studio3D.state.fabric,
                         size: Studio3D.state.size,
-                        decals: cleanDecals,
-                        // Separate front/back screenshots
                         frontImage: frontScreenshot,
                         backImage: backScreenshot,
-                        // Raw uploaded images (for admin download)
                         frontUpload: Studio3D.designs.front.rawSrc,
-                        backUpload: Studio3D.designs.back.rawSrc
+                        backUpload: Studio3D.designs.back.rawSrc,
+                        designState: Studio3D.designState
                     };
 
                     const cartItem = {
@@ -619,7 +621,8 @@ const Studio3D = {
                 aiResultsArea.style.display = 'none';
 
                 try {
-                    const res = await fetch('/api/ai/generate', {
+                    // Use API_BASE_URL to ensure it hits the backend regardless of where frontend is hosted
+                    const res = await fetch(`${window.API_BASE_URL || '/api'}/ai/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ prompt })
@@ -647,14 +650,14 @@ const Studio3D = {
                 const imgSrc = aiResultImage.src;
                 if (!imgSrc) return;
 
-                const loader = new THREE.TextureLoader();
-                loader.load(imgSrc, (texture) => {
-                    texture.colorSpace = THREE.SRGBColorSpace;
-                    Studio3D.currentTexture = texture;
-                    Studio3D.currentTextureSrc = imgSrc;
-                    Studio3D.currentTextureText = null;
-                    document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your generated design.';
-                });
+                const img = new Image();
+                img.onload = () => {
+                    Studio3D.designImage = img;
+                    Studio3D.renderDesignToTexture();
+                    Studio3D.updatePrice();
+                    Studio3D.updateLayers();
+                };
+                img.src = imgSrc;
             });
         }
 
@@ -662,14 +665,13 @@ const Studio3D = {
         const btnRemoveBackground = document.getElementById('btnRemoveBackground');
         if (btnRemoveBackground) {
             btnRemoveBackground.addEventListener('click', async () => {
-                // If there's a selected decal with an image, we can remove its background
-                if (!Studio3D.currentDecalMesh) {
-                    alert('Please select an image on the t-shirt first.');
+                if (!Studio3D.designImage) {
+                    alert('Please add an image design to the t-shirt first.');
                     return;
                 }
                 
-                const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === Studio3D.currentDecalMesh);
-                if (!configItem || !configItem.textureSrc || configItem.textureSrc.startsWith('data:image/svg+xml')) {
+                const imgSrc = Studio3D.designImage.src;
+                if (!imgSrc || imgSrc.startsWith('data:image/svg+xml')) {
                     alert('Please select a valid image (not text) to remove the background.');
                     return;
                 }
@@ -682,19 +684,17 @@ const Studio3D = {
                     const res = await fetch('/api/ai/remove-bg', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ imageUrl: configItem.textureSrc })
+                        body: JSON.stringify({ imageUrl: imgSrc })
                     });
                     
                     const data = await res.json();
                     if (data.success && data.url) {
-                        // Replace the texture
-                        const loader = new THREE.TextureLoader();
-                        loader.load(data.url, (texture) => {
-                            texture.colorSpace = THREE.SRGBColorSpace;
-                            Studio3D.currentDecalMesh.material.map = texture;
-                            Studio3D.currentDecalMesh.material.needsUpdate = true;
-                            configItem.textureSrc = data.url; // update the stored source
-                        });
+                        const img = new Image();
+                        img.onload = () => {
+                            Studio3D.designImage = img;
+                            Studio3D.renderDesignToTexture();
+                        };
+                        img.src = data.url;
                     } else {
                         alert(data.message || 'Failed to remove background.');
                     }
@@ -732,9 +732,7 @@ const Studio3D = {
 
     setShirtColor: (hexColor) => {
         Studio3D.state.shirtColor = hexColor;
-        Studio3D.tshirtMeshes.forEach(mesh => {
-            mesh.material.color.setHex(parseInt(hexColor.replace('#', '0x')));
-        });
+        Studio3D.renderDesignToTexture();
     },
 
     handleSideUpload: (e, side) => {
@@ -758,18 +756,14 @@ const Studio3D = {
             }
             if (clearBtn) clearBtn.style.display = 'inline-flex';
 
-            // Load into THREE and prepare as decal
-            const textureLoader = new THREE.TextureLoader();
-            textureLoader.load(rawSrc, (texture) => {
-                texture.colorSpace = THREE.SRGBColorSpace;
-                const aspect = texture.image.width / texture.image.height;
-                Studio3D.decalBaseScale.set(0.3 * aspect, 0.3, 0.1);
-                Studio3D.decalScale.copy(Studio3D.decalBaseScale);
-                Studio3D.currentTexture = texture;
-                Studio3D.currentTextureSrc = rawSrc;
-                Studio3D.currentTextureText = null;
-                document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your image. Drag to move it.';
-            });
+            // Load into designImage
+            const img = new Image();
+            img.onload = () => {
+                Studio3D.designImage = img;
+                Studio3D.renderDesignToTexture();
+                Studio3D.updatePrice();
+            };
+            img.src = rawSrc;
         };
         reader.readAsDataURL(file);
         e.target.value = '';
@@ -781,7 +775,10 @@ const Studio3D = {
         const clearBtn = document.getElementById(side === 'front' ? 'btnClearFront' : 'btnClearBack');
         if (thumbWrap) thumbWrap.innerHTML = '<span class="side-thumb-empty">No image uploaded</span>';
         if (clearBtn) clearBtn.style.display = 'none';
-        // Remove decals on this side
+        
+        Studio3D.designImage = null;
+        Studio3D.renderDesignToTexture();
+        Studio3D.updatePrice();
         Studio3D.setSide(side);
     },
 
@@ -794,7 +791,7 @@ const Studio3D = {
     ================================================ */
     updatePrice: () => {
         const basePrice = Studio3D.pricing[Studio3D.state.fabric] || 299;
-        const printCost = Studio3D.decals.length > 0 ? 150 : 0; // Simple print cost rule
+        const printCost = Studio3D.designImage ? 150 : 0; // Simple print cost rule
 
         const unitPrice = basePrice + printCost;
         const total = unitPrice * Studio3D.state.quantity;
@@ -824,63 +821,41 @@ const Studio3D = {
         const layerCount = document.getElementById('layerCount');
         if (!layersList || !layerCount) return;
 
-        layerCount.textContent = `(${Studio3D.decals.length})`;
-
-        if (Studio3D.decals.length === 0) {
+        if (!Studio3D.designImage) {
+            layerCount.textContent = `(0)`;
             layersList.innerHTML = '<p class="no-layers-msg">No elements yet. Add text or image.</p>';
             return;
         }
 
+        layerCount.textContent = `(1)`;
         layersList.innerHTML = '';
-        Studio3D.decals.forEach((decal, index) => {
-            const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === decal);
-            if (!configItem) return;
+        
+        const div = document.createElement('div');
+        div.className = `layer-item active`;
+        div.style.cssText = `
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 10px; background: rgba(255,255,255,0.05); 
+            border-radius: 6px; margin-bottom: 8px; cursor: pointer;
+            border: 1px solid var(--primary);
+        `;
+        
+        div.innerHTML = `
+            <div class="layer-info" style="display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-image" style="color:var(--text-muted)"></i>
+                <span style="font-size:13px">Design Layer</span>
+            </div>
+            <button class="layer-delete-btn" title="Delete Layer" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button>
+        `;
 
-            const isText = !!configItem.textureText;
-            const name = isText ? `Text: "${configItem.textureText.substring(0,10)}${configItem.textureText.length>10?'...':''}"` : `Image Layer ${index + 1}`;
-            const icon = isText ? 'fa-font' : 'fa-image';
-
-            const div = document.createElement('div');
-            div.className = `layer-item ${Studio3D.currentDecalMesh === decal ? 'active' : ''}`;
-            div.style.cssText = `
-                display: flex; justify-content: space-between; align-items: center; 
-                padding: 10px; background: rgba(255,255,255,0.05); 
-                border-radius: 6px; margin-bottom: 8px; cursor: pointer;
-                border: 1px solid ${Studio3D.currentDecalMesh === decal ? 'var(--primary)' : 'transparent'};
-            `;
-            
-            div.innerHTML = `
-                <div class="layer-info" style="display:flex; align-items:center; gap:10px;">
-                    <i class="fas ${icon}" style="color:var(--text-muted)"></i>
-                    <span style="font-size:13px">${name}</span>
-                </div>
-                <button class="layer-delete-btn" title="Delete Layer" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button>
-            `;
-
-            div.querySelector('.layer-info').addEventListener('click', () => {
-                Studio3D.currentDecalMesh = decal;
-                // Update opacity/scale slider to match this layer's scale
-                const slider = document.getElementById('imageOpacity');
-                if (slider) {
-                    slider.value = Math.round((configItem.scale[0] / Studio3D.decalBaseScale.x) * 30);
-                    const sizeValue = document.getElementById('imageOpacityValue');
-                    if(sizeValue) sizeValue.textContent = slider.value + '%';
-                }
-                Studio3D.updateLayers();
-            });
-
-            div.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                Studio3D.scene.remove(decal);
-                Studio3D.decals = Studio3D.decals.filter(d => d !== decal);
-                Studio3D.customDesignConfig.decals = Studio3D.customDesignConfig.decals.filter(d => d.mesh !== decal);
-                if (Studio3D.currentDecalMesh === decal) Studio3D.currentDecalMesh = null;
-                Studio3D.updateLayers();
-                Studio3D.updatePrice();
-            });
-
-            layersList.appendChild(div);
+        div.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            Studio3D.designImage = null;
+            Studio3D.renderDesignToTexture();
+            Studio3D.updateLayers();
+            Studio3D.updatePrice();
         });
+
+        layersList.appendChild(div);
     },
 
     generateTextTexture: () => {
@@ -923,26 +898,13 @@ const Studio3D = {
             ctx.fillRect(startX, 190, w, 10);
         }
 
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.colorSpace = THREE.SRGBColorSpace;
-
-        Studio3D.currentTexture = texture;
-        Studio3D.currentTextureSrc = canvas.toDataURL('image/png');
-        Studio3D.currentTextureText = text;
-
-        const aspect = canvas.width / canvas.height;
-        Studio3D.decalBaseScale.set(0.3 * aspect, 0.3, 0.1);
-        Studio3D.decalScale.copy(Studio3D.decalBaseScale);
-
-        if (Studio3D.currentDecalMesh) {
-            const configItem = Studio3D.customDesignConfig.decals.find(d => d.mesh === Studio3D.currentDecalMesh);
-            if (configItem && configItem.textureText) {
-                Studio3D.currentDecalMesh.material.map = texture;
-                Studio3D.currentDecalMesh.material.needsUpdate = true;
-                configItem.textureSrc = Studio3D.currentTextureSrc;
-                configItem.textureText = Studio3D.currentTextureText;
-            }
-        }
+        const img = new Image();
+        img.onload = () => {
+            Studio3D.designImage = img;
+            Studio3D.renderDesignToTexture();
+            Studio3D.updatePrice();
+        };
+        img.src = canvas.toDataURL('image/png');
     }
 };
 
