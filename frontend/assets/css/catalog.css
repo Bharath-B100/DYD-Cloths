@@ -153,6 +153,7 @@
     overflow: hidden;
     transition: all var(--transition);
     position: relative;
+    cursor: pointer;
 }
 
 .catalog-page .product-card:hover {

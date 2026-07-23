@@ -59,7 +59,7 @@ const CatalogPage = {
             : `<span class="product-price">${Utils.formatINR(sellPrice)}</span>`;
 
         return `
-        <div class="product-card">
+        <div class="product-card" onclick="if(!event.target.closest('.btn-add')){ localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}' }">
             <div class="product-image">
                 <img src="${product.mainImage || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'}"
                      alt="${Utils.escapeHtml(product.name || 'Product')}"
@@ -68,7 +68,7 @@ const CatalogPage = {
                     <button class="btn-add" onclick="CatalogPage.addToCart('${product._id}')">
                         <i class="fas fa-cart-plus"></i> Add to Cart
                     </button>
-                    <button class="btn-details" onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">
+                    <button class="btn-details">
                         <i class="fas fa-eye"></i> View Details
                     </button>
                 </div>

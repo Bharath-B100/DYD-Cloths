@@ -1205,6 +1205,7 @@ select.form-control {
     border-radius: var(--radius-xl);
     overflow: hidden;
     transition: all var(--transition);
+    cursor: pointer;
 }
 
 .product-card:hover {

@@ -75,11 +75,10 @@ const Shop = {
         const inWishlist = AuthManager.hasWishlistItem(product._id);
         
         return `
-            <div class="product-card">
+            <div class="product-card" onclick="if(!event.target.closest('.wishlist-btn, .btn-add')){ localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}' }">
                 <div class="product-image">
                     <img src="${product.mainImage}" alt="${product.name}" 
-                         onerror="this.src='https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'"
-                         onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">
+                         onerror="this.src='https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'">
                     <button class="wishlist-btn ${inWishlist ? 'active' : ''}" 
                             onclick="Shop.toggleWishlist('${product._id}', this)">
                         <i class="${inWishlist ? 'fas' : 'far'} fa-heart"></i>
@@ -88,14 +87,14 @@ const Shop = {
                         <button class="btn-add" onclick="Shop.quickAddToCart('${product._id}')">
                             <i class="fas fa-cart-plus"></i> Add to Cart
                         </button>
-                        <button class="btn-details" onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">
+                        <button class="btn-details">
                             <i class="fas fa-eye"></i> View Details
                         </button>
                     </div>
                 </div>
                 <div class="product-info">
                     <span class="product-category">${product.category || 'Uncategorized'}</span>
-                    <h3 class="product-title" onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">${Utils.escapeHtml(product.name || 'Product')}</h3>
+                    <h3 class="product-title">${Utils.escapeHtml(product.name || 'Product')}</h3>
                     <div class="product-footer">
                         ${Shop.renderPriceBlock(product)}
                         ${product.rating ? `

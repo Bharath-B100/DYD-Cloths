@@ -474,13 +474,13 @@ const App = {
                     : `<div class="product-price">${Utils.formatINR(sellPrice)}</div>`;
 
                 return `
-                <div class="product-card">
+                <div class="product-card" onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">
                     <div class="product-image">
                         <img src="${product.mainImage || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'}"
                              alt="${product.name || 'Product'}"
                              onerror="this.src='https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'">
                         <div class="product-overlay">
-                            <a href="product.html?id=${product._id}" class="btn btn-primary">View Product</a>
+                            <span class="btn btn-primary">View Product</span>
                         </div>
                     </div>
                     <div class="product-info">
