@@ -108,6 +108,44 @@ const Utils = {
     },
 
     /**
+     * In-page confirmation dialog used instead of native browser dialogs.
+     */
+    confirmAction: (message, { title = 'Please confirm', confirmText = 'Confirm', destructive = false } = {}) => {
+        return new Promise((resolve) => {
+            const modal = document.createElement('div');
+            modal.className = 'app-confirm-backdrop';
+            modal.innerHTML = `
+                <section class="app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle">
+                    <h2 id="appConfirmTitle">${Utils.escapeHtml(title)}</h2>
+                    <p>${Utils.escapeHtml(message)}</p>
+                    <div class="app-confirm-actions">
+                        <button type="button" class="btn btn-outline app-confirm-cancel">Cancel</button>
+                        <button type="button" class="btn ${destructive ? 'btn-danger' : 'btn-primary'} app-confirm-accept">${Utils.escapeHtml(confirmText)}</button>
+                    </div>
+                </section>
+            `;
+
+            const finish = (result) => {
+                document.removeEventListener('keydown', onKeydown);
+                modal.remove();
+                resolve(result);
+            };
+            const onKeydown = (event) => {
+                if (event.key === 'Escape') finish(false);
+            };
+
+            modal.querySelector('.app-confirm-cancel').addEventListener('click', () => finish(false));
+            modal.querySelector('.app-confirm-accept').addEventListener('click', () => finish(true));
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) finish(false);
+            });
+            document.addEventListener('keydown', onKeydown);
+            document.body.appendChild(modal);
+            modal.querySelector('.app-confirm-cancel').focus();
+        });
+    },
+
+    /**
      * Get URL parameters
      * @returns {Object}
      */

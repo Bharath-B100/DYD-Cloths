@@ -43,7 +43,10 @@ const API = {
                         window.location.href = 'login.html';
                     }
                 }
-                throw new Error(data.message || data.error || 'Something went wrong');
+                const errMessage = data.message || 
+                                   (data.error && typeof data.error === 'object' ? data.error.message : data.error) || 
+                                   'Something went wrong';
+                throw new Error(errMessage);
             }
 
             return data;

@@ -3,6 +3,8 @@
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
@@ -31,10 +33,41 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors());
+const configuredOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+const localDevelopmentOrigins = [
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+];
+const allowedOrigins = process.env.NODE_ENV === 'production'
+    ? configuredOrigins
+    : [...new Set([...configuredOrigins, ...localDevelopmentOrigins])];
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.disable('x-powered-by');
+// The storefront currently uses trusted font/icon/image CDNs. Keep Helmet's
+// protective headers enabled without shipping a restrictive CSP that would
+// break those existing assets; introduce a nonce-based CSP during CDN cleanup.
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: false
+}));
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Origin not allowed by CORS policy'));
+    },
+    credentials: true
+}));
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(cookieParser());
 
 // Serve Static Files from frontend directory
@@ -91,6 +124,18 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 100,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many authentication attempts. Please try again later.' }
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+
 // Add user routes
 app.use('/api/user', userRoutes);
 app.use('/api/auth', authRoutes);

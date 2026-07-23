@@ -268,6 +268,10 @@ const Checkout = {
             Utils.showToast('Please select a payment method', 'warning');
             return false;
         }
+        if (selectedMethod === 'razorpay') {
+            Utils.showToast('Online payments are coming soon. Please select Cash on Delivery.', 'info');
+            return false;
+        }
         return true;
     },
 
@@ -316,6 +320,11 @@ const Checkout = {
         if (!submitBtn) return;
 
         const selectedMethod = document.querySelector('.payment-method.selected')?.dataset.method || 'cod';
+
+        if (selectedMethod === 'razorpay') {
+            Utils.showToast('Online payments are coming soon. Please select Cash on Delivery.', 'info');
+            return;
+        }
 
         const subtotal = CartManager.getTotal();
         const discount = Checkout.discountAmount;
@@ -496,6 +505,10 @@ const Checkout = {
         const paymentMethods = document.querySelectorAll('.payment-method');
         paymentMethods.forEach(m => {
             m.addEventListener('click', () => {
+                if (m.classList.contains('payment-method-disabled')) {
+                    Utils.showToast('Online payments are coming soon. Please select Cash on Delivery.', 'info');
+                    return;
+                }
                 paymentMethods.forEach(item => item.classList.remove('selected'));
                 m.classList.add('selected');
 

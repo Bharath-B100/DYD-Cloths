@@ -15,7 +15,7 @@
             <!-- Logo -->
             <a href="index.html" class="logo">
                 <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain;">
-                <span>D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
+                <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
             </a>
 
             <!-- Mobile Menu Toggle -->
@@ -90,6 +90,16 @@
                 <button type="submit" class="btn btn-primary btn-full">Register</button>
             </form>
 
+            <div class="auth-divider" style="text-align:center; margin: 16px 0; color: var(--text-muted); position: relative;">
+                <span style="background: var(--bg-card, #121212); padding: 0 10px; z-index: 1; position: relative;">or</span>
+                <hr style="position: absolute; top: 50%; left: 0; right: 0; border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 0;">
+            </div>
+
+            <button id="googleAuthBtn" type="button" class="btn btn-outline btn-full" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;">
+                <img src="https://www.gstatic.com/images/branding/product/1x/gcheck_24dp.png" alt="Google" style="height: 18px; width: 18px;">
+                Continue with Google
+            </button>
+
             <div class="auth-links">
                 <p>Already have an account? <a href="login.html">Login here</a></p>
             </div>
@@ -98,10 +108,10 @@
 
     <script src="assets/js/core/utils.js"></script>
     <script src="assets/js/core/api.js"></script>
-    <script src="assets/js/core/auth.js?v=20260515-2"></script>
+    <script src="assets/js/core/firebase-auth.js"></script>
+    <script src="assets/js/core/auth.js?v=20260723-google-rebuild"></script>
     <script src="assets/js/core/cart.js"></script>
     <script src="assets/js/main.js"></script>
     <script src="assets/js/search.js"></script>
 </body>
 </html>
-

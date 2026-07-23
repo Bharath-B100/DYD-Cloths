@@ -19,7 +19,7 @@
         <div class="nav-container">
             <a href="index.html" class="logo">
                 <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain;">
-                <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span>
+                <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
             </a>
             <ul class="nav-links" id="navLinks">
                 <li><a href="index.html">Home</a></li>
@@ -286,31 +286,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Image / Design Properties -->
-            <div class="tool-section" id="imagePropertiesPanel">
-                <label class="tool-label">Design Scale</label>
-                <div class="range-row">
-                    <input type="range" id="designScale" min="10" max="200" value="80" class="studio-range">
-                    <span id="designScaleValue">80</span>
-                </div>
-                
-                <label class="tool-label" style="margin-top:10px">Position X (Horizontal)</label>
-                <div class="range-row">
-                    <input type="range" id="designPosX" min="0" max="100" value="50" class="studio-range">
-                    <span id="designPosXValue">50</span>
-                </div>
-                
-                <label class="tool-label" style="margin-top:10px">Position Y (Vertical)</label>
-                <div class="range-row">
-                    <input type="range" id="designPosY" min="0" max="100" value="50" class="studio-range">
-                    <span id="designPosYValue">50</span>
-                </div>
-                
-                <label class="tool-label" style="margin-top:10px">Rotation (Degrees)</label>
-                <div class="range-row">
-                    <input type="range" id="designRot" min="-180" max="180" value="0" class="studio-range">
-                    <span id="designRotValue">0</span>
                 </div>
                 
                 <button class="studio-btn-outline" id="btnRemoveBackground" style="margin-top: 15px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -335,6 +310,10 @@
                 <div class="price-row-s" id="printPriceRow" style="display:none">
                     <span>Print Cost</span>
                     <span id="printPrice">+₹0</span>
+                </div>
+                <div class="price-row-s" id="textPriceRow" style="display:none">
+                    <span>Text Customization</span>
+                    <span id="textPrice">+₹0</span>
                 </div>
                 <div class="price-row-s final-s">
                     <span>Total <small id="qtyNote">(×1)</small></span>
@@ -379,7 +358,7 @@
         }
     </script>
     <script src="assets/js/main.js"></script>
-    <script type="module" src="assets/js/studio.js?v=20260710-color-fix"></script>
+    <script type="module" src="assets/js/studio.js?v=20260721-cart-fallback-v2"></script>
     <script src="assets/js/search.js"></script>
 </body>
 </html>

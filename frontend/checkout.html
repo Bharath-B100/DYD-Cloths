@@ -8,15 +8,13 @@
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/checkout.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Razorpay Checkout Script -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body class="checkout-page">
     <nav class="navbar">
         <div class="nav-container">
             <a href="index.html" class="logo">
                 <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain;">
-                <span>D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
+                <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
             </a>
             <ul class="nav-links">
                 <li><a href="index.html">Home</a></li>
@@ -106,17 +104,17 @@
                         <div id="couponMessage" class="coupon-message"></div>
                     </div>
                     <div class="payment-methods">
-                        <div class="payment-method selected" data-method="razorpay" id="pmRazorpay">
+                        <div class="payment-method payment-method-disabled" data-method="razorpay" id="pmRazorpay" aria-disabled="true">
                             <div class="payment-method-inner">
                                 <img src="https://razorpay.com/favicon.png" alt="Razorpay" style="width:20px;height:20px;object-fit:contain">
                                 <div>
                                     <strong>Pay Online</strong>
                                     <small>Cards, UPI, Net Banking, Wallets</small>
                                 </div>
-                                <span class="payment-badge secure"><i class="fas fa-shield-alt"></i> Secure</span>
+                                <span class="payment-badge"><i class="fas fa-clock"></i> Coming soon</span>
                             </div>
                         </div>
-                        <div class="payment-method" data-method="cod" id="pmCOD">
+                        <div class="payment-method selected" data-method="cod" id="pmCOD">
                             <div class="payment-method-inner">
                                 <i class="fas fa-money-bill-wave payment-icon cod"></i>
                                 <div>
@@ -127,10 +125,10 @@
                         </div>
                     </div>
 
-                    <!-- Razorpay info notice (replaces dummy card form) -->
+                    <!-- Online payments are intentionally disabled until the gateway rollout. -->
                     <div class="razorpay-notice" id="razorpayNotice">
                         <i class="fas fa-info-circle"></i>
-                        After clicking <strong>"Review Order"</strong>, you'll be redirected to the secure Razorpay payment page where you can pay via UPI, Credit/Debit Card, Net Banking, or Wallet.
+                        Online payments are coming soon. Please select Cash on Delivery to complete your order today.
                     </div>
                     
                     <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">

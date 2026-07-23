@@ -28,10 +28,10 @@ const userSchema = new mongoose.Schema({
     },
     passwordConfirm: {
         type: String,
-        required: [true, 'Please confirm your password'],
+        required: [function() { return this.isNew; }, 'Please confirm your password'],
         validate: {
-            // This only works on CREATE and SAVE
             validator: function(el) {
+                if (!this.isNew) return true;
                 return el === this.password;
             },
             message: 'Passwords do not match'

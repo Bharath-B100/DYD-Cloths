@@ -382,10 +382,43 @@ const bulkUpdateStock = async (req, res) => {
         
         const result = await Product.bulkWrite(bulkOps);
         
-        res.status(200).json({ success: true, message: `Stock updated for ${result.modifiedCount} products`, data: result });
-        
     } catch (error) {
         console.error('Bulk update stock error:', error);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+};
+
+// @desc    Bulk update product pricing
+// @route   PUT /api/admin/products/bulk/pricing
+// @access  Private/Admin
+const bulkUpdatePricing = async (req, res) => {
+    try {
+        const { updates } = req.body;
+        
+        if (!Array.isArray(updates) || updates.length === 0) {
+            return res.status(400).json({ success: false, error: 'Please provide updates array' });
+        }
+        
+        const bulkOps = updates.map(u => ({
+            updateOne: {
+                filter: { _id: u.productId },
+                update: {
+                    $set: {
+                        mrp: (u.mrp !== undefined && u.mrp !== null && u.mrp > 0) ? u.mrp : null,
+                        discountPercent: u.discountPercent || 0,
+                        sellingPrice: u.sellingPrice,
+                        price: u.price !== undefined ? u.price : u.sellingPrice
+                    }
+                }
+            }
+        }));
+        
+        const result = await Product.bulkWrite(bulkOps);
+        
+        res.status(200).json({ success: true, message: `Pricing updated for ${result.modifiedCount} products`, data: result });
+        
+    } catch (error) {
+        console.error('Bulk update pricing error:', error);
         res.status(500).json({ success: false, error: 'Server error' });
     }
 };
@@ -541,10 +574,11 @@ const updateUserRole = async (req, res) => {
             }
         }
         
-        targetUser.role = role;
-        await targetUser.save();
-        
-        const updatedUser = await User.findById(id).select('-password');
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { role },
+            { new: true, runValidators: false }
+        ).select('-password');
         
         res.status(200).json({ 
             success: true, 
@@ -554,7 +588,7 @@ const updateUserRole = async (req, res) => {
         
     } catch (error) {
         console.error('Update user role error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(500).json({ success: false, error: error.message || 'Server error' });
     }
 };
 
@@ -758,6 +792,7 @@ module.exports = {
     updateProduct,
     deleteProduct,
     bulkUpdateStock,
+    bulkUpdatePricing,
     getAllCustomers,
     getCustomerDetails,
     updateCustomerStatus,

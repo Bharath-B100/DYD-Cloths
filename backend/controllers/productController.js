@@ -15,7 +15,7 @@ const getProducts = async (req, res) => {
     try {
         // Parse query parameters
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 100;
         const skip = (page - 1) * limit;
         
         // Build query
@@ -68,7 +68,7 @@ const getProducts = async (req, res) => {
             currentPage: page,
             data: products.map(product => ({
                 ...product,
-                formattedPrice: formatINR(product.price)
+                formattedPrice: formatINR(product.sellingPrice || product.price)
             }))
         });
         
@@ -109,7 +109,7 @@ const getProductById = async (req, res) => {
             success: true,
             data: {
                 ...product,
-                formattedPrice: formatINR(product.price),
+                formattedPrice: formatINR(product.sellingPrice || product.price),
                 inStock: product.stock > 0
             }
         });

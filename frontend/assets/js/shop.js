@@ -12,6 +12,9 @@ const Shop = {
     filteredProducts: [],
 
     init: async () => {
+        // Wait for the authenticated user (and their saved wishlist) before
+        // rendering product cards, otherwise hearts briefly render as inactive.
+        await AuthManager.ready;
         Shop.setupEventListeners();
         await Shop.fetchProducts();
         Shop.handleInitialUrlState();
@@ -69,7 +72,7 @@ const Shop = {
     },
 
     createProductCard: (product) => {
-        const inWishlist = AuthManager.user?.wishlist?.includes(product._id);
+        const inWishlist = AuthManager.hasWishlistItem(product._id);
         
         return `
             <div class="product-card">
@@ -94,7 +97,7 @@ const Shop = {
                     <span class="product-category">${product.category || 'Uncategorized'}</span>
                     <h3 class="product-title" onclick="localStorage.setItem('currentProductId', '${product._id}'); window.location.href='product.html?id=${product._id}'">${Utils.escapeHtml(product.name || 'Product')}</h3>
                     <div class="product-footer">
-                        <span class="product-price">${Utils.formatINR(product.price)}</span>
+                        ${Shop.renderPriceBlock(product)}
                         ${product.rating ? `
                             <div class="product-rating">
                                 <i class="fas fa-star"></i>
@@ -105,6 +108,26 @@ const Shop = {
                 </div>
             </div>
         `;
+    },
+
+    /**
+     * Render price block — shows strikethrough MRP + discount badge when admin sets a discount
+     */
+    renderPriceBlock: (product) => {
+        const sellPrice = product.sellingPrice || product.price || 0;
+        const mrp = product.mrp;
+        const disc = product.discountPercent || 0;
+        const hasDiscount = mrp && mrp > sellPrice && disc > 0;
+
+        if (hasDiscount) {
+            return `
+                <div class="price-block">
+                    <span class="price-mrp">${Utils.formatINR(mrp)}</span>
+                    <span class="price-sell">${Utils.formatINR(sellPrice)}</span>
+                    <span class="discount-badge">${disc}% OFF</span>
+                </div>`;
+        }
+        return `<span class="product-price">${Utils.formatINR(sellPrice)}</span>`;
     },
 
     /**
@@ -200,13 +223,15 @@ const Shop = {
             btn.classList.toggle('active');
             icon.className = isActive ? 'far fa-heart' : 'fas fa-heart';
 
+            let response;
             if (isActive) {
-                await API.delete(`/auth/wishlist/${productId}`);
+                response = await API.delete(`/auth/wishlist/${productId}`);
                 Utils.showToast('Removed from wishlist', 'success');
             } else {
-                await API.post(`/auth/wishlist/${productId}`);
+                response = await API.post(`/auth/wishlist/${productId}`);
                 Utils.showToast('Added to wishlist', 'success');
             }
+            AuthManager.setWishlist(response.data?.wishlist || []);
         } catch (error) {
             // Revert on error
             btn.classList.toggle('active');

@@ -38,7 +38,7 @@ exports.updateSettings = async (req, res) => {
             const setting = await Settings.findOneAndUpdate(
                 { key: update.key },
                 { value: update.value },
-                { new: true, runValidators: true }
+                { new: true, runValidators: true, upsert: true }
             );
             if (setting) results.push(setting);
         }
@@ -83,7 +83,16 @@ exports.seedSettings = async (req, res) => {
             
             // Social
             { key: 'social_whatsapp', value: '919943935576', label: 'WhatsApp Number', category: 'social', type: 'text' },
-            { key: 'social_instagram', value: '#', label: 'Instagram URL', category: 'social', type: 'url' }
+            { key: 'social_instagram', value: '#', label: 'Instagram URL', category: 'social', type: 'url' },
+
+            // Studio Pricing
+            { key: 'price_fabric_cotton', value: 299, label: '100% Cotton Base Price (₹)', category: 'pricing', type: 'number' },
+            { key: 'price_fabric_polycotton', value: 349, label: 'Poly Cotton Base Price (₹)', category: 'pricing', type: 'number' },
+            { key: 'price_fabric_dryfit', value: 379, label: 'Dry Fit Base Price (₹)', category: 'pricing', type: 'number' },
+            { key: 'price_fabric_premium', value: 449, label: 'Premium Cotton Base Price (₹)', category: 'pricing', type: 'number' },
+            { key: 'price_fabric_organic', value: 499, label: 'Organic Cotton Base Price (₹)', category: 'pricing', type: 'number' },
+            { key: 'price_print_per_side', value: 150, label: 'Print Cost Per Side (₹)', category: 'pricing', type: 'number' },
+            { key: 'price_text_per_unit', value: 50, label: 'Text Cost Per Text Element (₹)', category: 'pricing', type: 'number' }
         ];
 
         // Only insert if empty or use upsert

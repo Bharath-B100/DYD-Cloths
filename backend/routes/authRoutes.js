@@ -16,13 +16,15 @@ const {
     addToWishlist,
     removeFromWishlist,
     getWishlist,
-    getSharedWishlist
+    getSharedWishlist,
+    googleLogin
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
 // Public routes
 router.post('/register', register);
 router.post('/login', login);
+router.post('/google-login', googleLogin);
 router.post('/forgot-password', forgotPassword);
 router.patch('/reset-password/:token', resetPassword);
 router.get('/wishlist/share/:userId', getSharedWishlist);

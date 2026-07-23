@@ -52,6 +52,8 @@ const CartManager = {
                 return false;
             }
             CartManager.items[existingIndex].quantity = newQty;
+            if (product.image) CartManager.items[existingIndex].image = product.image;
+            if (product.customDesign) CartManager.items[existingIndex].customDesign = product.customDesign;
         } else {
             CartManager.items.push({
                 id: product.id,
@@ -61,7 +63,8 @@ const CartManager = {
                 size: product.size || 'M',
                 color: product.color || 'Default',
                 quantity: product.quantity || 1,
-                maxStock: product.maxStock || 999
+                maxStock: product.maxStock || 999,
+                customDesign: product.customDesign || null
             });
         }
 

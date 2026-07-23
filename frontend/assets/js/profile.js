@@ -154,6 +154,7 @@ const Profile = {
             // Extract wishlist array safely
             const wishlistData = res.data?.wishlist || res.data?.data || res.data || [];
             const items = Array.isArray(wishlistData) ? wishlistData : (wishlistData.wishlist || []);
+            AuthManager.setWishlist(items);
 
             if (items.length === 0) {
                 container.innerHTML = '<div class="empty-state"><i class="far fa-heart"></i><p>Your wishlist is empty.</p><a href="shop.html" class="btn btn-outline mt-2">Start Shopping</a></div>';
@@ -182,8 +183,9 @@ const Profile = {
 
     toggleWishlist: async (id) => {
         try {
-            await API.post(`/auth/wishlist/${id}`);
-            Utils.showToast('Wishlist updated', 'success');
+            const response = await API.delete(`/auth/wishlist/${id}`);
+            AuthManager.setWishlist(response.data?.wishlist || []);
+            Utils.showToast('Removed from wishlist', 'success');
             Profile.loadWishlist();
         } catch (err) {
             Utils.showToast('Failed to update wishlist', 'error');
@@ -211,7 +213,7 @@ const Profile = {
     },
 
     cancelOrder: async (orderId) => {
-        if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) return;
+        if (!await Utils.confirmAction('Cancel this order? This action cannot be undone.', { title: 'Cancel order', confirmText: 'Cancel order', destructive: true })) return;
         try {
             const res = await API.put(`/orders/${orderId}/cancel`);
             if (res.success) {

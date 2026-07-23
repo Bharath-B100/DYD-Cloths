@@ -16,7 +16,7 @@
         <div class="sidebar-header">
             <div class="admin-logo">
                 <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain; margin-bottom: 10px;">
-                <span>D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
+                <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
             </div>
             <p style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 5px;">Admin Dashboard</p>
         </div>
@@ -37,9 +37,17 @@
                     <i class="fas fa-tshirt"></i>
                     <span>Products</span>
                 </a>
+                <a href="#" class="nav-link" data-page="pricing">
+                    <i class="fas fa-tags"></i>
+                    <span>Pricing</span>
+                </a>
                 <a href="#" class="nav-link" data-page="customers">
                     <i class="fas fa-users"></i>
                     <span>Customers</span>
+                </a>
+                <a href="#" class="nav-link" data-page="coupons">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Coupons</span>
                 </a>
                 <a href="#" class="nav-link" data-page="settings">
                     <i class="fas fa-cog"></i>
@@ -172,7 +180,8 @@
             <div class="preview-actions" style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; flex-wrap:wrap;" id="previewActions">
                 <button class="btn btn-outline active" id="btnViewFront"><i class="fas fa-arrow-up"></i> Front</button>
                 <button class="btn btn-outline" id="btnViewBack"><i class="fas fa-arrow-down"></i> Back</button>
-                <button class="btn btn-primary" id="btnView3D" style="display: none;"><i class="fas fa-cube"></i> 3D View</button>
+                <button class="btn btn-outline" id="btnView3D" style="display: none;"><i class="fas fa-cube"></i> 3D View</button>
+                <button class="btn btn-outline" id="btnViewRawImage" style="display: none;"><i class="fas fa-image"></i> Raw Uploaded Image</button>
                 <button class="btn btn-outline" id="btnDownloadAssets" style="display: none;"><i class="fas fa-download"></i> Download All</button>
             </div>
             <div id="lightbox2DPreview">
@@ -180,6 +189,10 @@
             </div>
             <div id="lightbox3DPreview" style="display: none; height: 60vh; background: #f5f5f5; border-radius: 8px; position: relative; overflow: hidden; width: 100%;">
                 <!-- Three.js will inject here -->
+            </div>
+            <div id="lightboxRawView" style="display: none; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 8px; text-align: center; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); width: 100%; box-sizing: border-box;">
+                <h4 style="color: #fff; margin-bottom: 15px; font-size: 15px;"><i class="fas fa-file-image"></i> Customer Artwork File(s) (Raw Image Alone)</h4>
+                <div id="lightboxRawImageGrid" style="display: flex; gap: 20px; justify-content: center; align-items: center; flex-wrap: wrap;"></div>
             </div>
             <div id="lightboxExtractedAssets" style="margin-top: 20px; display: none;">
                 <h4 style="margin-bottom: 10px; font-size: 14px; color: var(--text-muted); text-align: left;">Uploaded Customer Images:</h4>
@@ -209,8 +222,18 @@
                                 <input type="text" id="productName" class="form-control" required>
                             </div>
                             <div class="form-group">
-                                <label for="productPrice">Price (INR) *</label>
+                                <label for="productPrice">Selling Price (INR) *</label>
                                 <input type="number" id="productPrice" class="form-control" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="productMrp">MRP / Original Price (INR)</label>
+                                <input type="number" id="productMrp" class="form-control" step="0.01" min="0" placeholder="e.g. 1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="productDiscount">Discount %</label>
+                                <input type="number" id="productDiscount" class="form-control" step="1" min="0" max="100" placeholder="e.g. 50">
                             </div>
                         </div>
                         <div class="form-row">
@@ -263,23 +286,34 @@
                                 <input type="text" id="productColors" class="form-control" placeholder="Blue, Black, Red">
                             </div>
                         </div>
+                        <!-- Thumbnail Image -->
                         <div class="form-group">
-                            <label for="productImageFile">Thumbnail Image *</label>
-                            <input type="file" id="productImageFile" class="form-control" accept="image/jpeg,image/png,image/webp">
-                            <small style="color: var(--text-muted); margin-top: 4px; display: block;">Main product image shown in shop cards.</small>
+                            <label for="productImageFile">Thumbnail Image * <span style="color:rgba(255,255,255,0.4); font-weight:400; font-size:0.8rem;">(Main product card image)</span></label>
+                            <div class="img-upload-zone" id="thumbnailDropZone">
+                                <input type="file" id="productImageFile" class="img-upload-input" accept="image/jpeg,image/png,image/webp">
+                                <div class="img-upload-placeholder" id="thumbnailPlaceholder">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Click or drag to upload thumbnail</span>
+                                    <small>JPG, PNG, WEBP</small>
+                                </div>
+                                <img id="thumbnailPreview" class="img-preview-thumb" style="display:none;">
+                            </div>
+                            <input type="url" id="productImageUrl" class="form-control" placeholder="Or paste image URL here" style="margin-top:8px;">
                         </div>
+
+                        <!-- Gallery Images -->
                         <div class="form-group">
-                            <label for="productGalleryFiles">Product Gallery Images</label>
-                            <input type="file" id="productGalleryFiles" class="form-control" accept="image/jpeg,image/png,image/webp" multiple>
-                            <small style="color: var(--text-muted); margin-top: 4px; display: block;">Upload additional product detail images.</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="productImageUrl">Thumbnail Image URL</label>
-                            <input type="url" id="productImageUrl" class="form-control" placeholder="https://example.com/thumbnail.jpg">
-                        </div>
-                        <div class="form-group">
-                            <label for="productImageUrls">Gallery Image URLs</label>
-                            <textarea id="productImageUrls" class="form-control" rows="3" placeholder="Paste one image URL per line"></textarea>
+                            <label for="productGalleryFiles">Gallery Images <span style="color:rgba(255,255,255,0.4); font-weight:400; font-size:0.8rem;">(Multiple T-shirt views)</span></label>
+                            <div class="img-upload-zone gallery-zone" id="galleryDropZone">
+                                <input type="file" id="productGalleryFiles" class="img-upload-input" accept="image/jpeg,image/png,image/webp" multiple>
+                                <div class="img-upload-placeholder" id="galleryPlaceholder">
+                                    <i class="fas fa-images"></i>
+                                    <span>Click or drag to upload gallery images</span>
+                                    <small>Select multiple — front, back, side views etc.</small>
+                                </div>
+                            </div>
+                            <div id="galleryPreviewGrid" class="gallery-preview-grid"></div>
+                            <textarea id="productImageUrls" class="form-control" rows="2" placeholder="Or paste gallery URLs, one per line" style="margin-top:8px;"></textarea>
                         </div>
                         <div class="form-group">
                             <label for="productDescription">Description *</label>
@@ -317,7 +351,7 @@
             }
         }
     </script>
-    <script src="assets/js/admin.js?v=20260521-3"></script>
+    <script src="assets/js/admin.js?v=20260721-role-fix"></script>
     <script src="assets/js/search.js"></script>
     <script>
         // Toggle user dropdown menu

@@ -12,6 +12,7 @@ const {
 } = require('../controllers/orderController');
 
 const { protect } = require('../middleware/auth');
+const { adminProtect } = require('../middleware/admin');
 
 // Public routes
 router.get('/track', trackOrder);
@@ -20,9 +21,9 @@ router.get('/track', trackOrder);
 router.post('/', protect, createOrder);
 router.put('/:id/cancel', protect, cancelOrder);
 
-// Admin routes (will add authentication middleware in Phase 5)
-router.get('/', getOrders);
-router.get('/:id', getOrderById);
-router.put('/:id/status', updateOrderStatus);
+// Protected routes: users can only access their own orders; admins manage all orders.
+router.get('/', adminProtect, getOrders);
+router.get('/:id', protect, getOrderById);
+router.put('/:id/status', adminProtect, updateOrderStatus);
 
 module.exports = router;

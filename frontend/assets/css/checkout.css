@@ -786,3 +786,13 @@
     margin-top: 0.25rem;
     display: block;
 }
+
+.payment-method-disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.payment-method-disabled:hover {
+    border-color: var(--border-color);
+    transform: none;
+}

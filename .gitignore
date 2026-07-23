@@ -63,3 +63,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary test/scratch files
+backend/scratch/
+backend/tests/

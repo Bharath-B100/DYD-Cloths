@@ -314,17 +314,32 @@ const App = {
         }
 
         // Hero Section
-        Utils.setHTML('heroTitle', settings.hero_title);
+        const heroTitleEl = document.getElementById('heroTitle');
+        if (heroTitleEl && settings.hero_title) {
+            let titleText = settings.hero_title;
+            if (!titleText.includes('text-gradient')) {
+                titleText = titleText
+                    .replace(/\bDesign\b/gi, '<span class="text-gradient">Design</span>')
+                    .replace(/\bDream\b/gi, '<span class="text-gradient">Dream</span>');
+            } else if (!titleText.includes('Design</span>')) {
+                titleText = titleText.replace(/\bDesign\b/gi, '<span class="text-gradient">Design</span>');
+            }
+            heroTitleEl.innerHTML = titleText;
+        }
         Utils.setHTML('heroSubtitle', settings.hero_subtitle);
         const heroImg = document.getElementById('heroMainImage');
         if (heroImg && settings.hero_image) heroImg.src = settings.hero_image;
 
         // Branding
         const siteNames = document.querySelectorAll('.site-name');
-        siteNames.forEach(el => el.textContent = settings.site_name);
+        siteNames.forEach(el => {
+            el.innerHTML = `D<span style="color: var(--primary)">Y</span>D-Clothes`;
+        });
         
         const taglines = document.querySelectorAll('.site-tagline');
-        taglines.forEach(el => el.textContent = settings.site_tagline);
+        taglines.forEach(el => {
+            el.textContent = (settings.site_tagline && !settings.site_tagline.toLowerCase().includes('cloths')) ? settings.site_tagline : 'Design your Dream Clothes';
+        });
 
         // Contact Info (Global)
         const phones = document.querySelectorAll('.contact-phone');
@@ -357,33 +372,44 @@ const App = {
         if (items.length === 0) {
             container.innerHTML = `
                 <div class="empty-cart">
-                    <i class="fas fa-shopping-bag"></i>
-                    <p>Your cart is empty</p>
-                    <a href="shop.html" class="btn btn-primary">Start Shopping</a>
+                    <div class="empty-cart-icon-wrapper">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                    <h4>Your Cart is Empty</h4>
+                    <p>Looks like you haven't added any custom tees or apparel to your cart yet!</p>
+                    <a href="shop.html" class="btn btn-empty-shop"><i class="fas fa-magic"></i> Start Shopping</a>
                 </div>
             `;
             if (totalEl) totalEl.textContent = Utils.formatINR(0);
             return;
         }
 
-        container.innerHTML = items.map((item) => `
+        container.innerHTML = items.map((item) => {
+            const imgSrc = (item.image && item.image.length > 50) ? item.image : 
+                           (item.customDesign && item.customDesign.frontImage && item.customDesign.frontImage.length > 50) ? item.customDesign.frontImage :
+                           (item.customDesign && item.customDesign.backImage && item.customDesign.backImage.length > 50) ? item.customDesign.backImage :
+                           'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400';
+            return `
             <div class="cart-item">
-                <img src="${item.image}" alt="${item.name}" class="cart-item-image">
+                <img src="${imgSrc}" alt="${item.name}" class="cart-item-image" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400';">
                 <div class="cart-item-details">
                     <h4 class="cart-item-title">${item.name}</h4>
-                    <p class="cart-item-meta">${item.size} / ${item.color}</p>
-                    <p class="cart-item-price">${Utils.formatINR(item.price)}</p>
-                    <div class="cart-item-actions">
-                        <button class="quantity-btn" data-id="${item.id}" data-size="${item.size}" data-color="${item.color}" data-delta="-1">-</button>
-                        <span>${item.quantity}</span>
-                        <button class="quantity-btn" data-id="${item.id}" data-size="${item.size}" data-color="${item.color}" data-delta="1">+</button>
-                        <button class="remove-item" data-id="${item.id}" data-size="${item.size}" data-color="${item.color}">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                    <p class="cart-item-meta"><span class="cart-tag">Size: ${item.size}</span> <span class="cart-tag">Color: ${item.color}</span></p>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 6px;">
+                        <p class="cart-item-price">${Utils.formatINR(item.price)}</p>
+                        <div class="cart-item-actions">
+                            <button class="quantity-btn" data-id="${item.id}" data-size="${item.size}" data-color="${item.color}" data-delta="-1">-</button>
+                            <span style="font-weight:700; font-size:0.875rem; min-width:18px; text-align:center;">${item.quantity}</span>
+                            <button class="quantity-btn" data-id="${item.id}" data-size="${item.size}" data-color="${item.color}" data-delta="1">+</button>
+                            <button class="remove-item" data-id="${item.id}" data-size="${item.size}" data-color="${item.color}" title="Remove item">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         if (totalEl) totalEl.textContent = Utils.formatINR(CartManager.getTotal());
 
@@ -434,7 +460,20 @@ const App = {
                 return;
             }
 
-            grid.innerHTML = productList.map(product => `
+            grid.innerHTML = productList.map(product => {
+                const sellPrice = product.sellingPrice || product.price || 0;
+                const mrp = product.mrp;
+                const disc = product.discountPercent || 0;
+                const hasDiscount = mrp && mrp > sellPrice && disc > 0;
+                const priceHtml = hasDiscount
+                    ? `<div class="price-block">
+                            <span class="price-mrp">${Utils.formatINR(mrp)}</span>
+                            <span class="price-sell">${Utils.formatINR(sellPrice)}</span>
+                            <span class="discount-badge">${disc}% OFF</span>
+                       </div>`
+                    : `<div class="product-price">${Utils.formatINR(sellPrice)}</div>`;
+
+                return `
                 <div class="product-card">
                     <div class="product-image">
                         <img src="${product.mainImage || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'}"
@@ -447,10 +486,10 @@ const App = {
                     <div class="product-info">
                         <span class="product-category">${product.category || 'T-shirt'}</span>
                         <h3 class="product-title">${product.name || 'Product'}</h3>
-                        <div class="product-price">${Utils.formatINR(product.price || 0)}</div>
+                        ${priceHtml}
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         } catch (error) {
             console.error('Featured products error:', error);
             grid.innerHTML = `

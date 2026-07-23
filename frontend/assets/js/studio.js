@@ -3,15 +3,15 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // --- Utility: Print Zone UV Computation ---
-function computePrintZoneUVs(geometry, worldMatrix) {
+function computePrintZoneUVs(geometry, worldMatrix, side = 'front') {
     const posAttr = geometry.getAttribute('position');
     const normalAttr = geometry.getAttribute('normal');
     const uvAttr = geometry.getAttribute('uv');
     const index = geometry.getIndex();
     
     let minU = 1, minV = 1, maxU = 0, maxV = 0;
-    
     const count = index ? index.count : posAttr.count;
+    let foundFaces = 0;
     
     for (let i = 0; i < count; i += 3) {
         const a = index ? index.getX(i) : i;
@@ -22,8 +22,9 @@ function computePrintZoneUVs(geometry, worldMatrix) {
         const nA = new THREE.Vector3(normalAttr.getX(a), normalAttr.getY(a), normalAttr.getZ(a));
         nA.transformDirection(worldMatrix); // Get world normal
         
-        // If face is roughly pointing forward (Z > 0.5)
-        if (nA.z > 0.1) {
+        const isTargetSide = (side === 'front') ? (nA.z > 0.1) : (nA.z < -0.1);
+        
+        if (isTargetSide) {
             const uA = uvAttr.getX(a), vA = uvAttr.getY(a);
             const uB = uvAttr.getX(b), vB = uvAttr.getY(b);
             const uC = uvAttr.getX(c), vC = uvAttr.getY(c);
@@ -32,7 +33,12 @@ function computePrintZoneUVs(geometry, worldMatrix) {
             maxU = Math.max(maxU, uA, uB, uC);
             minV = Math.min(minV, vA, vB, vC);
             maxV = Math.max(maxV, vA, vB, vC);
+            foundFaces++;
         }
+    }
+    
+    if (foundFaces === 0) {
+        return { u0: 0, v0: 0, u1: 1, v1: 1 };
     }
     
     // Add small padding
@@ -62,23 +68,74 @@ const Studio3D = {
     tshirtMesh: null,
     tshirtMeshes: [],
     modelContainer: null,
+
+    // Interaction Raycasting
+    mouse: new THREE.Vector2(),
+    raycaster: new THREE.Raycaster(),
     
     // Canvas Texture System
     printCanvas: null,
     printCtx: null,
     printTexture: null,
     printZoneUV: null,
+    printZoneUVs: {
+        front: null,
+        back: null
+    },
     
-    // Design Overlay State
-    designImage: null,    // The HTMLImageElement of the uploaded/AI design
-    isDraggingDesign: false, // For mouse drag
-    designState: {
-        x: 0.5,           // Center X in print zone (0 to 1)
-        y: 0.5,           // Center Y in print zone (0 to 1)
-        scale: 0.8,
-        rotation: 0
+    // Helper to safely load clean (non-tainting) HTMLImageElement
+    loadCleanImage: (src) => {
+        return new Promise((resolve, reject) => {
+            if (!src) return reject(new Error('No src provided'));
+            if (src.startsWith('data:') || src.startsWith('blob:')) {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+                return;
+            }
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = () => {
+                fetch(src)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        const blobUrl = URL.createObjectURL(blob);
+                        const bImg = new Image();
+                        bImg.onload = () => resolve(bImg);
+                        bImg.onerror = reject;
+                        bImg.src = blobUrl;
+                    })
+                    .catch(reject);
+            };
+            img.src = src;
+        });
     },
 
+    generatePreviewSnapshot: (side = 'front') => {
+        if (!Studio3D.renderer || !Studio3D.scene || !Studio3D.camera) return null;
+        try {
+            const oldRotY = Studio3D.modelContainer ? Studio3D.modelContainer.rotation.y : 0;
+            if (Studio3D.modelContainer) {
+                Studio3D.modelContainer.rotation.y = (side === 'back') ? Math.PI : 0;
+            }
+            Studio3D.renderer.render(Studio3D.scene, Studio3D.camera);
+            const screenshot = Studio3D.renderer.domElement.toDataURL('image/png');
+            if (Studio3D.modelContainer) {
+                Studio3D.modelContainer.rotation.y = oldRotY;
+            }
+            if (screenshot && screenshot.length > 200) {
+                return screenshot;
+            }
+            return Studio3D.printCanvas ? Studio3D.printCanvas.toDataURL('image/png') : null;
+        } catch (e) {
+            console.error('Snapshot generation error:', e);
+            return Studio3D.printCanvas ? Studio3D.printCanvas.toDataURL('image/png') : null;
+        }
+    },
+    
+    // General T-shirt State
     state: {
         shirtColor: '#ffffff',
         fabric: '100% Cotton',
@@ -86,12 +143,113 @@ const Studio3D = {
         quantity: 1
     },
 
-    // Per-side raw uploaded images
+    // Multi-Layer Design State
     designs: {
-        front: { rawSrc: null },
-        back:  { rawSrc: null }
+        front: [], // Array of layer objects {id, name, type, img, rawSrc, x, y, scale, rotation}
+        back:  []
     },
     currentSide: 'front',
+    activeLayerId: null,
+
+    getActiveLayer: () => {
+        const layers = Studio3D.designs[Studio3D.currentSide] || [];
+        if (!layers.length) return null;
+        let found = layers.find(l => l.id === Studio3D.activeLayerId);
+        if (!found && layers.length > 0) {
+            found = layers[layers.length - 1];
+            Studio3D.activeLayerId = found.id;
+        }
+        return found;
+    },
+
+    setActiveLayer: (id) => {
+        Studio3D.activeLayerId = id;
+        Studio3D.syncTextControlsFromActiveLayer();
+        Studio3D.syncSlidersFromActiveLayer();
+        Studio3D.updateLayers();
+        Studio3D.renderDesignToTexture();
+    },
+
+    syncSlidersFromActiveLayer: () => {
+        const layer = Studio3D.getActiveLayer();
+        if (!layer) return;
+        
+        const scaleSlider = document.getElementById('designScale');
+        const scaleVal = document.getElementById('designScaleValue');
+        if (scaleSlider) { scaleSlider.value = Math.round(layer.scale * 100); if(scaleVal) scaleVal.textContent = Math.round(layer.scale * 100); }
+        
+        const posXSlider = document.getElementById('designPosX');
+        const posXVal = document.getElementById('designPosXValue');
+        if (posXSlider) { posXSlider.value = Math.round(layer.x * 100); if(posXVal) posXVal.textContent = Math.round(layer.x * 100); }
+        
+        const posYSlider = document.getElementById('designPosY');
+        const posYVal = document.getElementById('designPosYValue');
+        if (posYSlider) { posYSlider.value = Math.round(layer.y * 100); if(posYVal) posYVal.textContent = Math.round(layer.y * 100); }
+        
+        const rotSlider = document.getElementById('designRot');
+        const rotVal = document.getElementById('designRotValue');
+        if (rotSlider) { rotSlider.value = Math.round(layer.rotation); if(rotVal) rotVal.textContent = Math.round(layer.rotation); }
+    },
+
+    syncTextControlsFromActiveLayer: () => {
+        const layer = Studio3D.getActiveLayer();
+        if (!layer || layer.type !== 'text') return;
+
+        if (layer.textContent) document.getElementById('textInput').value = layer.textContent;
+        if (layer.textStyle) Object.assign(Studio3D.textStyle, layer.textStyle);
+
+        const textColorPicker = document.getElementById('textColorPicker');
+        if (textColorPicker) textColorPicker.value = Studio3D.textStyle.color;
+
+        const fontFamily = document.getElementById('fontFamily');
+        if (fontFamily && layer.textSettings?.fontFamily) fontFamily.value = layer.textSettings.fontFamily;
+
+        const fontSize = document.getElementById('fontSize');
+        const fontSizeValue = document.getElementById('fontSizeValue');
+        if (fontSize && layer.textSettings?.fontSize) {
+            fontSize.value = layer.textSettings.fontSize;
+            if (fontSizeValue) fontSizeValue.textContent = `${layer.textSettings.fontSize}px`;
+        }
+    },
+
+    addLayer: (img, name = 'Design Layer', type = 'image', rawSrc = null) => {
+        if (!Studio3D.designs[Studio3D.currentSide]) Studio3D.designs[Studio3D.currentSide] = [];
+        const layers = Studio3D.designs[Studio3D.currentSide];
+        const count = layers.length;
+        const offset = (count * 0.04) % 0.25;
+
+        const newLayer = {
+            id: 'layer_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            name: name,
+            type: type,
+            img: img,
+            rawSrc: rawSrc || (img ? img.src : null),
+            x: 0.3,
+            y: 0.3,
+            scale: 0.6,
+            rotation: 0
+        };
+
+        layers.push(newLayer);
+        Studio3D.activeLayerId = newLayer.id;
+        Studio3D.syncSlidersFromActiveLayer();
+        Studio3D.renderDesignToTexture();
+        Studio3D.updateLayers();
+        Studio3D.updatePrice();
+    },
+
+    removeLayer: (id) => {
+        let layers = Studio3D.designs[Studio3D.currentSide] || [];
+        Studio3D.designs[Studio3D.currentSide] = layers.filter(l => l.id !== id);
+        if (Studio3D.activeLayerId === id) {
+            const remaining = Studio3D.designs[Studio3D.currentSide];
+            Studio3D.activeLayerId = remaining.length > 0 ? remaining[remaining.length - 1].id : null;
+            Studio3D.syncSlidersFromActiveLayer();
+        }
+        Studio3D.renderDesignToTexture();
+        Studio3D.updateLayers();
+        Studio3D.updatePrice();
+    },
 
     textStyle: {
         bold: false,
@@ -108,12 +266,54 @@ const Studio3D = {
         'Premium Cotton': 449,
         'Organic Cotton': 499
     },
+    printCostPerSide: 150,
+    textCostPerUnit: 50,
 
-    init: () => {
+    init: async () => {
         Studio3D.initThreeJS();
         Studio3D.bindControls();
+        // Fetch admin-configured pricing (non-blocking — fall back to defaults)
+        try {
+            const res = await fetch('/api/settings');
+            if (res.ok) {
+                const json = await res.json();
+                const s = json.data || {};
+                if (s.price_fabric_cotton)    Studio3D.pricing['100% Cotton']    = Number(s.price_fabric_cotton);
+                if (s.price_fabric_polycotton) Studio3D.pricing['Poly Cotton']   = Number(s.price_fabric_polycotton);
+                if (s.price_fabric_dryfit)    Studio3D.pricing['Dry Fit']        = Number(s.price_fabric_dryfit);
+                if (s.price_fabric_premium)   Studio3D.pricing['Premium Cotton'] = Number(s.price_fabric_premium);
+                if (s.price_fabric_organic)   Studio3D.pricing['Organic Cotton'] = Number(s.price_fabric_organic);
+                if (s.price_print_per_side)   Studio3D.printCostPerSide          = Number(s.price_print_per_side);
+                if (s.price_text_per_unit)    Studio3D.textCostPerUnit           = Number(s.price_text_per_unit);
+                // Refresh fabric select labels
+                Studio3D.refreshFabricLabels();
+            }
+        } catch (e) { /* silently use defaults */ }
         Studio3D.updatePrice();
     },
+
+    refreshFabricLabels: () => {
+        const sel = document.getElementById('fabricSelect');
+        if (!sel) return;
+        const fabricMap = {
+            '100% Cotton':    sel.options[0],
+            'Poly Cotton':    sel.options[1],
+            'Dry Fit':        sel.options[2],
+            'Premium Cotton': sel.options[3],
+            'Organic Cotton': sel.options[4]
+        };
+        const labelMap = {
+            '100% Cotton':    '100% Cotton',
+            'Poly Cotton':    'Poly Cotton Blend',
+            'Dry Fit':        'Dry Fit / Sports',
+            'Premium Cotton': 'Premium Cotton',
+            'Organic Cotton': 'Organic Cotton'
+        };
+        Object.entries(fabricMap).forEach(([key, opt]) => {
+            if (opt) opt.textContent = `${labelMap[key]} (\u20B9${Studio3D.pricing[key]})`;
+        });
+    },
+
 
     initThreeJS: () => {
         const container = document.getElementById('threeCanvasContainer');
@@ -127,7 +327,7 @@ const Studio3D = {
         Studio3D.camera.position.set(0, 0, 1.5);
 
         // Renderer Setup
-        Studio3D.renderer = new THREE.WebGLRenderer({ antialias: true });
+        Studio3D.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         Studio3D.renderer.setSize(container.clientWidth, container.clientHeight);
         Studio3D.renderer.setPixelRatio(window.devicePixelRatio);
         Studio3D.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -206,11 +406,13 @@ const Studio3D = {
                             return;
                         }
 
-                        // Compute UV print zone
+                        // Compute UV print zone for both Front and Back
                         child.updateMatrixWorld();
-                        if (!Studio3D.printZoneUV) {
-                            Studio3D.printZoneUV = computePrintZoneUVs(child.geometry, child.matrixWorld);
-                            console.log('Computed Print Zone UVs:', Studio3D.printZoneUV);
+                        if (!Studio3D.printZoneUVs.front) {
+                            Studio3D.printZoneUVs.front = computePrintZoneUVs(child.geometry, child.matrixWorld, 'front');
+                            Studio3D.printZoneUVs.back = computePrintZoneUVs(child.geometry, child.matrixWorld, 'back');
+                            Studio3D.printZoneUV = Studio3D.printZoneUVs.front;
+                            console.log('Computed Print Zone UVs:', Studio3D.printZoneUVs);
                         }
 
                         Studio3D.tshirtMeshes.push(child);
@@ -274,12 +476,39 @@ const Studio3D = {
     },
 
     onPointerDown: (e) => {
-        if (!Studio3D.tshirtMesh || !Studio3D.designImage) return;
+        const side = Studio3D.currentSide;
+        const layers = Studio3D.designs[side] || [];
+        if (!Studio3D.tshirtMesh || layers.length === 0) return;
 
         Studio3D.updateRaycaster(e);
         const intersects = Studio3D.raycaster.intersectObjects(Studio3D.tshirtMeshes);
         
         if (intersects.length > 0) {
+            const uv = intersects[0].uv;
+            const uvZone = (Studio3D.printZoneUVs && Studio3D.printZoneUVs[side]) 
+                           ? Studio3D.printZoneUVs[side] 
+                           : (Studio3D.printZoneUV || null);
+            if (uvZone) {
+                const u0 = uvZone.u0;
+                const u1 = uvZone.u1;
+                const v0 = uvZone.v0;
+                const v1 = uvZone.v1;
+                const nx = (uv.x - u0) / (u1 - u0);
+                const ny = (uv.y - v0) / (v1 - v0);
+
+                let closest = layers[layers.length - 1];
+                let minDist = Infinity;
+                layers.forEach(l => {
+                    const dist = Math.hypot(l.x - nx, l.y - ny);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = l;
+                    }
+                });
+                if (closest) {
+                    Studio3D.setActiveLayer(closest.id);
+                }
+            }
             Studio3D.controls.enabled = false;
             Studio3D.isDraggingDesign = true;
             Studio3D.updateDesignPositionFromUV(intersects[0].uv);
@@ -303,34 +532,29 @@ const Studio3D = {
     },
 
     updateDesignPositionFromUV: (uv) => {
-        if (!Studio3D.printZoneUV) return;
+        const side = Studio3D.currentSide;
+        const uvZone = (Studio3D.printZoneUVs && Studio3D.printZoneUVs[side]) 
+                       ? Studio3D.printZoneUVs[side] 
+                       : (Studio3D.printZoneUV || null);
+        if (!uvZone) return;
+        const activeLayer = Studio3D.getActiveLayer();
+        if (!activeLayer) return;
 
-        const u0 = Studio3D.printZoneUV.u0;
-        const u1 = Studio3D.printZoneUV.u1;
-        const v0 = Studio3D.printZoneUV.v0;
-        const v1 = Studio3D.printZoneUV.v1;
+        const u0 = uvZone.u0;
+        const u1 = uvZone.u1;
+        const v0 = uvZone.v0;
+        const v1 = uvZone.v1;
 
         let nx = (uv.x - u0) / (u1 - u0);
-        // Canvas is Y-down, but UV might be Y-up. Let's map it so dragging follows the mouse.
-        // We'll invert it if it feels backward, usually 1 - ny works for UV -> canvas Y mapping
-        let ny = 1.0 - ((uv.y - v0) / (v1 - v0)); 
+        let ny = (uv.y - v0) / (v1 - v0); 
 
-        // Clamp to 0-1
         nx = Math.max(0, Math.min(1, nx));
         ny = Math.max(0, Math.min(1, ny));
 
-        Studio3D.designState.x = nx;
-        Studio3D.designState.y = ny;
+        activeLayer.x = nx;
+        activeLayer.y = ny;
 
-        // Update UI sliders to reflect new position
-        const sliderX = document.getElementById('designPosX');
-        const valX = document.getElementById('designPosXValue');
-        if(sliderX) { sliderX.value = Math.round(nx * 100); if(valX) valX.textContent = Math.round(nx * 100); }
-
-        const sliderY = document.getElementById('designPosY');
-        const valY = document.getElementById('designPosYValue');
-        if(sliderY) { sliderY.value = Math.round(ny * 100); if(valY) valY.textContent = Math.round(ny * 100); }
-
+        Studio3D.syncSlidersFromActiveLayer();
         Studio3D.renderDesignToTexture();
     },
 
@@ -344,40 +568,43 @@ const Studio3D = {
         Studio3D.printCtx.fillStyle = Studio3D.state.shirtColor;
         Studio3D.printCtx.fillRect(0, 0, 2048, 2048);
         
-        // 2. Draw design if present
-        if (Studio3D.designImage && Studio3D.printZoneUV) {
-            const ctx = Studio3D.printCtx;
-            ctx.save();
-            
-            // The print zone in pixels (2048x2048 canvas)
-            const u0 = Studio3D.printZoneUV.u0;
-            const v0 = Studio3D.printZoneUV.v0;
-            const u1 = Studio3D.printZoneUV.u1;
-            const v1 = Studio3D.printZoneUV.v1;
-            
-            const zWidth = (u1 - u0) * 2048;
-            const zHeight = (v1 - v0) * 2048;
-            
-            // Center of design
-            const cX = u0 * 2048 + zWidth * Studio3D.designState.x;
-            // WebGL V is usually bottom-up, so V=0 is bottom, V=1 is top.
-            // On a flipY=false canvas, Y=0 is bottom, Y=2048 is top.
-            const cY = v0 * 2048 + zHeight * Studio3D.designState.y; 
-            
-            ctx.translate(cX, cY);
-            ctx.rotate(Studio3D.designState.rotation * Math.PI / 180);
-            
-            // Scale: default size is 50% of the print zone width
-            const baseSize = zWidth * 0.5;
-            const dw = baseSize * Studio3D.designState.scale;
-            const dh = dw * (Studio3D.designImage.height / Studio3D.designImage.width);
-            
-            // Invert Y drawing if needed (since canvas is 2D and ThreeJS might map it upside down if flipY is false)
-            ctx.scale(1, -1);
-            
-            ctx.drawImage(Studio3D.designImage, -dw/2, -dh/2, dw, dh);
-            ctx.restore();
-        }
+        // 2. Draw all layers for BOTH sides (front & back)
+        ['front', 'back'].forEach(side => {
+            const layers = Studio3D.designs[side] || [];
+            const uvZone = (Studio3D.printZoneUVs && Studio3D.printZoneUVs[side]) 
+                           ? Studio3D.printZoneUVs[side] 
+                           : (Studio3D.printZoneUV || null);
+
+            if (layers.length > 0 && uvZone) {
+                const ctx = Studio3D.printCtx;
+                const u0 = uvZone.u0;
+                const v0 = uvZone.v0;
+                const u1 = uvZone.u1;
+                const v1 = uvZone.v1;
+                
+                const zWidth = (u1 - u0) * 2048;
+                const zHeight = (v1 - v0) * 2048;
+                
+                layers.forEach(layer => {
+                    if (!layer.img) return;
+                    ctx.save();
+                    
+                    const cX = u0 * 2048 + zWidth * layer.x;
+                    const cY = v0 * 2048 + zHeight * layer.y; 
+                    
+                    ctx.translate(cX, cY);
+                    ctx.rotate(layer.rotation * Math.PI / 180);
+                    
+                    const baseSize = zWidth * 0.5;
+                    const dw = baseSize * layer.scale;
+                    const dh = dw * (layer.img.height / layer.img.width);
+                    
+                    ctx.scale(1, -1);
+                    ctx.drawImage(layer.img, -dw/2, -dh/2, dw, dh);
+                    ctx.restore();
+                });
+            }
+        });
         
         if (Studio3D.printTexture) {
             Studio3D.printTexture.needsUpdate = true;
@@ -442,27 +669,29 @@ const Studio3D = {
         document.getElementById('btnClearBack').addEventListener('click', () => Studio3D.clearSideDesign('back'));
 
         // Toolbar image button still works (uploads for current side)
+        document.getElementById('btnAddText').addEventListener('click', () => {
+            document.getElementById('textPropertiesPanel').style.display = 'block';
+            document.getElementById('aiMagicPanel').style.display = 'none';
+            document.getElementById('textInput').focus();
+        });
+
         document.getElementById('btnUploadImage').addEventListener('click', () => {
             const inputId = Studio3D.currentSide === 'front' ? 'frontFileInput' : 'backFileInput';
             document.getElementById(inputId).click();
         });
 
-        // Delete Layer
-        document.getElementById('btnDeleteSelected').addEventListener('click', () => {
-            if (confirm('Remove the current design?')) {
-                Studio3D.designImage = null;
-                Studio3D.renderDesignToTexture();
-                Studio3D.updatePrice();
+        // Delete Selected Layer
+        document.getElementById('btnDeleteSelected').addEventListener('click', async () => {
+            const activeLayer = Studio3D.getActiveLayer();
+            if (activeLayer && await Utils.confirmAction(`Remove "${activeLayer.name}"?`, { title: 'Remove design layer', confirmText: 'Remove', destructive: true })) {
+                Studio3D.removeLayer(activeLayer.id);
             }
         });
 
         // Clear Canvas
-        document.getElementById('btnClearCanvas').addEventListener('click', () => {
-            if (confirm('Clear all images from the T-shirt?')) {
-                Studio3D.designImage = null;
-                Studio3D.renderDesignToTexture();
-                Studio3D.updatePrice();
-                Studio3D.updateLayers();
+        document.getElementById('btnClearCanvas').addEventListener('click', async () => {
+            if (await Utils.confirmAction('Clear all design elements from this side of the T-shirt?', { title: 'Clear design', confirmText: 'Clear', destructive: true })) {
+                Studio3D.clearSideDesign(Studio3D.currentSide);
             }
         });
         
@@ -472,9 +701,12 @@ const Studio3D = {
             const valueSpan = document.getElementById(`${id}Value`);
             if (slider) {
                 slider.addEventListener('input', (e) => {
-                    Studio3D.designState[prop] = parseFloat(e.target.value) * isMultiplier;
-                    if (valueSpan) valueSpan.textContent = e.target.value;
-                    Studio3D.renderDesignToTexture();
+                    const activeLayer = Studio3D.getActiveLayer();
+                    if (activeLayer) {
+                        activeLayer[prop] = parseFloat(e.target.value) * isMultiplier;
+                        if (valueSpan) valueSpan.textContent = e.target.value;
+                        Studio3D.renderDesignToTexture();
+                    }
                 });
             }
         };
@@ -491,7 +723,7 @@ const Studio3D = {
                 const text = document.getElementById('textInput').value;
                 if (!text) return;
                 
-                Studio3D.generateTextTexture();
+                Studio3D.addTextLayer();
                 document.getElementById('canvasHint').innerHTML = '<i class="fas fa-hand-pointer"></i> Click anywhere on the 3D T-shirt to place your text. Drag to move it.';
             });
         }
@@ -511,7 +743,7 @@ const Studio3D = {
                     });
                     btn.classList.add('active');
                 }
-                Studio3D.generateTextTexture();
+                Studio3D.updateActiveTextLayer();
             });
         };
 
@@ -525,7 +757,7 @@ const Studio3D = {
         const applyTextColor = (color) => {
             Studio3D.textStyle.color = color;
             document.getElementById('textColorPicker').value = color;
-            Studio3D.generateTextTexture();
+            Studio3D.updateActiveTextLayer();
         };
 
         const textColorPicker = document.getElementById('textColorPicker');
@@ -537,6 +769,13 @@ const Studio3D = {
             btn.addEventListener('click', () => applyTextColor(btn.dataset.color));
         });
 
+        document.getElementById('fontFamily')?.addEventListener('change', () => Studio3D.updateActiveTextLayer());
+        document.getElementById('fontSize')?.addEventListener('input', (event) => {
+            const value = document.getElementById('fontSizeValue');
+            if (value) value.textContent = `${event.target.value}px`;
+            Studio3D.updateActiveTextLayer();
+        });
+
         // Add to Cart integration
         const btnAddToCart = document.getElementById('addToCartBtn');
         if (btnAddToCart) {
@@ -546,8 +785,12 @@ const Studio3D = {
                 btnAddToCart.disabled = true;
 
                 try {
-                    const frontScreenshot = Studio3D.renderer.domElement.toDataURL('image/png');
-                    const backScreenshot = Studio3D.renderer.domElement.toDataURL('image/png');
+                    // Capture Front and Back 3D Screenshots
+                    const frontScreenshot = Studio3D.generatePreviewSnapshot('front') || (Studio3D.printCanvas ? Studio3D.printCanvas.toDataURL('image/png') : '');
+                    const backScreenshot = Studio3D.generatePreviewSnapshot('back') || (Studio3D.printCanvas ? Studio3D.printCanvas.toDataURL('image/png') : '');
+
+                    // Restore user's current side view
+                    Studio3D.setSide(Studio3D.currentSide);
 
                     const customDesignInfo = {
                         isCustom: true,
@@ -556,10 +799,13 @@ const Studio3D = {
                         size: Studio3D.state.size,
                         frontImage: frontScreenshot,
                         backImage: backScreenshot,
-                        frontUpload: Studio3D.designs.front.rawSrc,
-                        backUpload: Studio3D.designs.back.rawSrc,
-                        designState: Studio3D.designState
+                        frontLayers: Studio3D.designs.front.map(l => ({ name: l.name, type: l.type, rawSrc: l.rawSrc, x: l.x, y: l.y, scale: l.scale, rotation: l.rotation })),
+                        backLayers: Studio3D.designs.back.map(l => ({ name: l.name, type: l.type, rawSrc: l.rawSrc, x: l.x, y: l.y, scale: l.scale, rotation: l.rotation }))
                     };
+
+                    const mainPreviewImage = (Studio3D.designs.front.length > 0 || Studio3D.designs.back.length === 0) 
+                                           ? frontScreenshot 
+                                           : backScreenshot;
 
                     const cartItem = {
                         id: `studio-${Date.now()}`,
@@ -568,7 +814,7 @@ const Studio3D = {
                         quantity: Studio3D.state.quantity,
                         size: Studio3D.state.size,
                         color: Studio3D.state.shirtColor,
-                        image: frontScreenshot,
+                        image: mainPreviewImage,
                         customDesign: customDesignInfo
                     };
 
@@ -578,11 +824,11 @@ const Studio3D = {
                         document.querySelector('.cart-overlay').classList.add('active');
                         if (window.CartManager.updateCartUI) window.CartManager.updateCartUI();
                     } else {
-                        alert('Cart system not found.');
+                        Utils.showToast('Cart is unavailable. Please refresh and try again.', 'error');
                     }
                 } catch (error) {
                     console.error('Add to cart error:', error);
-                    alert('Error adding to cart.');
+                    Utils.showToast('Unable to add this design to your cart.', 'error');
                 } finally {
                     btnAddToCart.innerHTML = btnOriginalText;
                     btnAddToCart.disabled = false;
@@ -612,7 +858,7 @@ const Studio3D = {
             btnGenerateAi.addEventListener('click', async () => {
                 const prompt = aiPromptInput.value.trim();
                 if (!prompt) {
-                    alert('Please enter a description for your design.');
+                    Utils.showToast('Please enter a description for your design.', 'warning');
                     return;
                 }
 
@@ -633,11 +879,11 @@ const Studio3D = {
                         aiResultImage.src = data.data[0].url;
                         aiResultsArea.style.display = 'block';
                     } else {
-                        alert(data.message || 'Failed to generate image.');
+                        Utils.showToast(data.message || 'Failed to generate image.', 'error');
                     }
                 } catch (err) {
                     console.error('AI Gen Error:', err);
-                    alert('An error occurred while generating the design.');
+                    Utils.showToast('An error occurred while generating the design.', 'error');
                 } finally {
                     btnGenerateAi.disabled = false;
                     aiLoadingIndicator.style.display = 'none';
@@ -646,18 +892,18 @@ const Studio3D = {
         }
 
         if (btnAddAiToShirt) {
-            btnAddAiToShirt.addEventListener('click', () => {
+            btnAddAiToShirt.addEventListener('click', async () => {
                 const imgSrc = aiResultImage.src;
                 if (!imgSrc) return;
 
-                const img = new Image();
-                img.onload = () => {
-                    Studio3D.designImage = img;
-                    Studio3D.renderDesignToTexture();
-                    Studio3D.updatePrice();
-                    Studio3D.updateLayers();
-                };
-                img.src = imgSrc;
+                try {
+                    const img = await Studio3D.loadCleanImage(imgSrc);
+                    const count = (Studio3D.designs[Studio3D.currentSide] || []).length + 1;
+                    Studio3D.addLayer(img, `AI Design ${count}`, 'image', imgSrc);
+                } catch (err) {
+                    console.error('Failed to load AI image:', err);
+                    Utils.showToast('Failed to load design onto the T-shirt.', 'error');
+                }
             });
         }
 
@@ -665,14 +911,15 @@ const Studio3D = {
         const btnRemoveBackground = document.getElementById('btnRemoveBackground');
         if (btnRemoveBackground) {
             btnRemoveBackground.addEventListener('click', async () => {
-                if (!Studio3D.designImage) {
-                    alert('Please add an image design to the t-shirt first.');
+                const activeLayer = Studio3D.getActiveLayer();
+                if (!activeLayer || !activeLayer.img) {
+                    Utils.showToast('Please select an image design layer on the T-shirt first.', 'warning');
                     return;
                 }
                 
-                const imgSrc = Studio3D.designImage.src;
+                const imgSrc = activeLayer.rawSrc || activeLayer.img.src;
                 if (!imgSrc || imgSrc.startsWith('data:image/svg+xml')) {
-                    alert('Please select a valid image (not text) to remove the background.');
+                    Utils.showToast('Please select a valid image layer to remove the background.', 'warning');
                     return;
                 }
 
@@ -689,18 +936,16 @@ const Studio3D = {
                     
                     const data = await res.json();
                     if (data.success && data.url) {
-                        const img = new Image();
-                        img.onload = () => {
-                            Studio3D.designImage = img;
-                            Studio3D.renderDesignToTexture();
-                        };
-                        img.src = data.url;
+                        const img = await Studio3D.loadCleanImage(data.url);
+                        activeLayer.img = img;
+                        activeLayer.rawSrc = data.url;
+                        Studio3D.renderDesignToTexture();
                     } else {
-                        alert(data.message || 'Failed to remove background.');
+                        Utils.showToast(data.message || 'Failed to remove background.', 'error');
                     }
                 } catch (err) {
                     console.error('Remove BG Error:', err);
-                    alert('An error occurred while removing the background.');
+                    Utils.showToast('An error occurred while removing the background.', 'error');
                 } finally {
                     btnRemoveBackground.innerHTML = originalText;
                     btnRemoveBackground.disabled = false;
@@ -728,6 +973,12 @@ const Studio3D = {
             if (frontSlot) frontSlot.style.display = 'none';
             if (backSlot) backSlot.style.display = 'block';
         }
+
+        const layers = Studio3D.designs[side] || [];
+        Studio3D.activeLayerId = layers.length > 0 ? layers[layers.length - 1].id : null;
+        Studio3D.syncSlidersFromActiveLayer();
+        Studio3D.renderDesignToTexture();
+        Studio3D.updateLayers();
     },
 
     setShirtColor: (hexColor) => {
@@ -739,16 +990,12 @@ const Studio3D = {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Ensure we are on the correct side
         Studio3D.setSide(side);
 
         const reader = new FileReader();
         reader.onload = (ev) => {
             const rawSrc = ev.target.result;
-            // Store the raw file
-            Studio3D.designs[side].rawSrc = rawSrc;
-
-            // Show thumbnail in the slot
+            
             const thumbWrap = document.getElementById(side === 'front' ? 'frontThumbWrap' : 'backThumbWrap');
             const clearBtn = document.getElementById(side === 'front' ? 'btnClearFront' : 'btnClearBack');
             if (thumbWrap) {
@@ -756,28 +1003,27 @@ const Studio3D = {
             }
             if (clearBtn) clearBtn.style.display = 'inline-flex';
 
-            // Load into designImage
-            const img = new Image();
-            img.onload = () => {
-                Studio3D.designImage = img;
-                Studio3D.renderDesignToTexture();
-                Studio3D.updatePrice();
-            };
-            img.src = rawSrc;
+            Studio3D.loadCleanImage(rawSrc).then(img => {
+                const count = (Studio3D.designs[side] || []).length + 1;
+                Studio3D.addLayer(img, `Uploaded Design ${count}`, 'image', rawSrc);
+            }).catch(err => console.error('Side upload load error:', err));
         };
         reader.readAsDataURL(file);
         e.target.value = '';
     },
 
     clearSideDesign: (side) => {
-        Studio3D.designs[side].rawSrc = null;
+        Studio3D.designs[side] = [];
+        if (Studio3D.currentSide === side) {
+            Studio3D.activeLayerId = null;
+        }
         const thumbWrap = document.getElementById(side === 'front' ? 'frontThumbWrap' : 'backThumbWrap');
         const clearBtn = document.getElementById(side === 'front' ? 'btnClearFront' : 'btnClearBack');
         if (thumbWrap) thumbWrap.innerHTML = '<span class="side-thumb-empty">No image uploaded</span>';
         if (clearBtn) clearBtn.style.display = 'none';
         
-        Studio3D.designImage = null;
         Studio3D.renderDesignToTexture();
+        Studio3D.updateLayers();
         Studio3D.updatePrice();
         Studio3D.setSide(side);
     },
@@ -791,9 +1037,14 @@ const Studio3D = {
     ================================================ */
     updatePrice: () => {
         const basePrice = Studio3D.pricing[Studio3D.state.fabric] || 299;
-        const printCost = Studio3D.designImage ? 150 : 0; // Simple print cost rule
+        const hasFront = (Studio3D.designs.front || []).some(l => l.type !== 'text');
+        const hasBack = (Studio3D.designs.back || []).some(l => l.type !== 'text');
+        const printCost = (hasFront ? Studio3D.printCostPerSide : 0) + (hasBack ? Studio3D.printCostPerSide : 0);
+        const textCount = [...(Studio3D.designs.front || []), ...(Studio3D.designs.back || [])]
+            .filter(layer => layer.type === 'text').length;
+        const textCost = textCount * Studio3D.textCostPerUnit;
 
-        const unitPrice = basePrice + printCost;
+        const unitPrice = basePrice + printCost + textCost;
         const total = unitPrice * Studio3D.state.quantity;
 
         document.getElementById('priceLabel').textContent = `${Studio3D.state.fabric}`;
@@ -805,6 +1056,14 @@ const Studio3D = {
             document.getElementById('printPrice').textContent = `+₹${printCost}`;
         } else {
             printRow.style.display = 'none';
+        }
+
+        const textRow = document.getElementById('textPriceRow');
+        if (textCost > 0) {
+            textRow.style.display = 'flex';
+            document.getElementById('textPrice').textContent = `+\u20B9${textCost}`;
+        } else {
+            textRow.style.display = 'none';
         }
 
         document.getElementById('qtyNote').textContent = `×${Studio3D.state.quantity}`;
@@ -821,49 +1080,58 @@ const Studio3D = {
         const layerCount = document.getElementById('layerCount');
         if (!layersList || !layerCount) return;
 
-        if (!Studio3D.designImage) {
-            layerCount.textContent = `(0)`;
+        const layers = Studio3D.designs[Studio3D.currentSide] || [];
+        layerCount.textContent = `(${layers.length})`;
+
+        if (layers.length === 0) {
             layersList.innerHTML = '<p class="no-layers-msg">No elements yet. Add text or image.</p>';
             return;
         }
 
-        layerCount.textContent = `(1)`;
         layersList.innerHTML = '';
-        
-        const div = document.createElement('div');
-        div.className = `layer-item active`;
-        div.style.cssText = `
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 10px; background: rgba(255,255,255,0.05); 
-            border-radius: 6px; margin-bottom: 8px; cursor: pointer;
-            border: 1px solid var(--primary);
-        `;
-        
-        div.innerHTML = `
-            <div class="layer-info" style="display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-image" style="color:var(--text-muted)"></i>
-                <span style="font-size:13px">Design Layer</span>
-            </div>
-            <button class="layer-delete-btn" title="Delete Layer" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button>
-        `;
+        const activeLayer = Studio3D.getActiveLayer();
 
-        div.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            Studio3D.designImage = null;
-            Studio3D.renderDesignToTexture();
-            Studio3D.updateLayers();
-            Studio3D.updatePrice();
+        layers.slice().reverse().forEach((layer) => {
+            const isActive = activeLayer && activeLayer.id === layer.id;
+            const icon = layer.type === 'text' ? 'fa-font' : 'fa-image';
+            
+            const div = document.createElement('div');
+            div.className = `layer-item ${isActive ? 'active' : ''}`;
+            div.style.cssText = `
+                display: flex; justify-content: space-between; align-items: center; 
+                padding: 10px; background: ${isActive ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)'}; 
+                border-radius: 6px; margin-bottom: 8px; cursor: pointer;
+                border: 1px solid ${isActive ? 'var(--primary)' : 'rgba(255,255,255,0.1)'};
+            `;
+            
+            div.innerHTML = `
+                <div class="layer-info" style="display:flex; align-items:center; gap:10px; flex:1;">
+                    <i class="fas ${icon}" style="color:${isActive ? 'var(--primary)' : 'var(--text-muted)'}"></i>
+                    <span style="font-size:13px; font-weight:${isActive ? '600' : '400'}">${layer.name}</span>
+                </div>
+                <button class="layer-delete-btn" data-id="${layer.id}" title="Delete Layer" style="background:none; border:none; color:#ef4444; cursor:pointer; padding:4px 8px;"><i class="fas fa-trash"></i></button>
+            `;
+
+            div.addEventListener('click', (e) => {
+                if (e.target.closest('.layer-delete-btn')) return;
+                Studio3D.setActiveLayer(layer.id);
+            });
+
+            div.querySelector('.layer-delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                Studio3D.removeLayer(layer.id);
+            });
+
+            layersList.appendChild(div);
         });
-
-        layersList.appendChild(div);
     },
 
-    generateTextTexture: () => {
+    createTextTexture: async (text) => {
         const textInput = document.getElementById('textInput');
-        if (!textInput || !textInput.value) return;
-        const text = textInput.value;
+        if (!textInput || !text) return null;
 
         const fontFam = document.getElementById('fontFamily') ? document.getElementById('fontFamily').value : 'Inter';
+        const fontSize = Number(document.getElementById('fontSize')?.value || 40);
         const fontColor = Studio3D.textStyle.color;
         const weight = Studio3D.textStyle.bold ? 'bold' : 'normal';
         const style = Studio3D.textStyle.italic ? 'italic' : 'normal';
@@ -875,7 +1143,8 @@ const Studio3D = {
         canvas.height = 256;
 
         ctx.fillStyle = fontColor;
-        ctx.font = `${style} ${weight} 120px "${fontFam}"`;
+        const canvasFontSize = Math.round(fontSize * 3);
+        ctx.font = `${style} ${weight} ${canvasFontSize}px "${fontFam}"`;
         ctx.textBaseline = 'middle';
 
         if (align === 'left') {
@@ -895,16 +1164,64 @@ const Studio3D = {
             let startX = 512 - w/2;
             if (align === 'left') startX = 50;
             if (align === 'right') startX = 974 - w;
-            ctx.fillRect(startX, 190, w, 10);
+            ctx.fillRect(startX, 128 + canvasFontSize / 2 + 8, w, Math.max(4, Math.round(canvasFontSize / 12)));
         }
 
-        const img = new Image();
-        img.onload = () => {
-            Studio3D.designImage = img;
+        const dataUrl = canvas.toDataURL('image/png');
+        const img = await Studio3D.loadCleanImage(dataUrl);
+        return { img, dataUrl };
+    },
+
+    addTextLayer: async () => {
+        const text = document.getElementById('textInput')?.value.trim();
+        if (!text) return;
+
+        try {
+            const texture = await Studio3D.createTextTexture(text);
+            if (!texture) return;
+            const textSnippet = text.length > 10 ? `${text.substring(0, 10)}...` : text;
+            Studio3D.addLayer(texture.img, `Text: "${textSnippet}"`, 'text', texture.dataUrl);
+            const layer = Studio3D.getActiveLayer();
+            if (layer) {
+                layer.textContent = text;
+                layer.textStyle = { ...Studio3D.textStyle };
+                layer.textSettings = {
+                    fontFamily: document.getElementById('fontFamily')?.value || 'Inter',
+                    fontSize: Number(document.getElementById('fontSize')?.value || 40)
+                };
+            }
+        } catch (error) {
+            console.error('Text texture load error:', error);
+            Utils.showToast('Unable to add text to the design.', 'error');
+        }
+    },
+
+    updateActiveTextLayer: async () => {
+        const layer = Studio3D.getActiveLayer();
+        if (!layer || layer.type !== 'text') return;
+
+        const text = document.getElementById('textInput')?.value.trim() || layer.textContent;
+        if (!text) return;
+
+        try {
+            const texture = await Studio3D.createTextTexture(text);
+            if (!texture) return;
+            layer.img = texture.img;
+            layer.rawSrc = texture.dataUrl;
+            layer.textContent = text;
+            layer.textStyle = { ...Studio3D.textStyle };
+            layer.textSettings = {
+                fontFamily: document.getElementById('fontFamily')?.value || 'Inter',
+                fontSize: Number(document.getElementById('fontSize')?.value || 40)
+            };
+            const textSnippet = text.length > 10 ? `${text.substring(0, 10)}...` : text;
+            layer.name = `Text: "${textSnippet}"`;
             Studio3D.renderDesignToTexture();
-            Studio3D.updatePrice();
-        };
-        img.src = canvas.toDataURL('image/png');
+            Studio3D.updateLayers();
+        } catch (error) {
+            console.error('Text texture update error:', error);
+            Utils.showToast('Unable to update the selected text.', 'error');
+        }
     }
 };
 

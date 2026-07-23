@@ -24,7 +24,7 @@ const getRazorpay = () => {
 
 // @desc    Create a Razorpay order (called before checkout)
 // @route   POST /api/payment/create-order
-// @access  Public
+// @access  Private
 exports.createPaymentOrder = async (req, res) => {
     try {
         const { amount, currency = 'INR', receipt } = req.body;
@@ -65,7 +65,7 @@ exports.createPaymentOrder = async (req, res) => {
 
 // @desc    Verify Razorpay payment signature & confirm order
 // @route   POST /api/payment/verify
-// @access  Public
+// @access  Private
 exports.verifyPayment = async (req, res) => {
     try {
         const {
@@ -97,6 +97,9 @@ exports.verifyPayment = async (req, res) => {
             const order = await Order.findById(orderId);
             if (!order) {
                 return res.status(404).json({ success: false, error: 'Order not found for verification' });
+            }
+            if (String(order.user) !== String(req.user.id) && req.user.role !== 'admin') {
+                return res.status(403).json({ success: false, error: 'You are not authorized to verify this order.' });
             }
 
             // Security check: Verify that the amount paid on Razorpay matches the actual order total
@@ -134,7 +137,7 @@ exports.verifyPayment = async (req, res) => {
 
 // @desc    Get Razorpay public key for frontend
 // @route   GET /api/payment/key
-// @access  Public
+// @access  Private
 exports.getPaymentKey = async (req, res) => {
     res.status(200).json({
         success: true,

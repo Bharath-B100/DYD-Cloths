@@ -45,7 +45,20 @@ const CatalogPage = {
         grid.innerHTML = CatalogPage.products.map(product => CatalogPage.createCard(product)).join('');
     },
 
-    createCard: (product) => `
+    createCard: (product) => {
+        const sellPrice = product.sellingPrice || product.price || 0;
+        const mrp = product.mrp;
+        const disc = product.discountPercent || 0;
+        const hasDiscount = mrp && mrp > sellPrice && disc > 0;
+        const priceHtml = hasDiscount
+            ? `<div class="price-block">
+                    <span class="price-mrp">${Utils.formatINR(mrp)}</span>
+                    <span class="price-sell">${Utils.formatINR(sellPrice)}</span>
+                    <span class="discount-badge">${disc}% OFF</span>
+               </div>`
+            : `<span class="product-price">${Utils.formatINR(sellPrice)}</span>`;
+
+        return `
         <div class="product-card">
             <div class="product-image">
                 <img src="${product.mainImage || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'}"
@@ -64,12 +77,13 @@ const CatalogPage = {
                 <span class="product-category">${Utils.escapeHtml(product.category || 'T-shirt')}</span>
                 <h3 class="product-title">${Utils.escapeHtml(product.name || 'Product')}</h3>
                 <div class="product-footer">
-                    <span class="product-price">${Utils.formatINR(product.price || 0)}</span>
+                    ${priceHtml}
                     ${product.rating ? `<span class="product-rating"><i class="fas fa-star"></i> ${product.rating.toFixed(1)}</span>` : ''}
                 </div>
             </div>
         </div>
-    `,
+        `;
+    },
 
     addToCart: (productId) => {
         const product = CatalogPage.products.find(item => item._id === productId);
@@ -78,7 +92,7 @@ const CatalogPage = {
         CartManager.addItem({
             id: product._id,
             name: product.name,
-            price: product.price,
+            price: product.sellingPrice || product.price,
             image: product.mainImage,
             size: 'M',
             color: product.colors?.[0] || 'Default',

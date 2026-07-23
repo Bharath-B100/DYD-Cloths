@@ -15,7 +15,8 @@ const formatINR = (amount) => new Intl.NumberFormat('en-IN', {
 // @access  Public
 const createOrder = async (req, res) => {
     try {
-        const { customer, items, shippingAddress, tax = 0, notes, paymentMethod, couponCode } = req.body;
+        const { customer, items, shippingAddress, notes, paymentMethod, couponCode } = req.body;
+        const tax = 0;
         
         if (!customer || !customer.name || !customer.email) {
             return res.status(400).json({ success: false, error: 'Customer name and email are required' });
@@ -32,17 +33,40 @@ const createOrder = async (req, res) => {
         // Server-side price calculation (Security Fix)
         let calculatedSubtotal = 0;
         for (const item of items) {
+            const quantity = Number(item.quantity);
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                return res.status(400).json({ success: false, error: 'Each item must have a valid quantity.' });
+            }
+
             if (item.productId && (item.productId.startsWith('studio-') || item.productId.startsWith('custom-'))) {
-                // Trust the generated custom price for studio items
-                calculatedSubtotal += (item.price * item.quantity);
+                // Calculate custom-design pricing from saved layer metadata, not client price fields.
+                const fabricPricing = {
+                    '100% Cotton': 299,
+                    'Poly Cotton': 349,
+                    'Dry Fit': 379,
+                    'Premium Cotton': 449,
+                    'Organic Cotton': 499
+                };
+                const design = item.customDesign || {};
+                const frontLayers = Array.isArray(design.frontLayers) ? design.frontLayers : [];
+                const backLayers = Array.isArray(design.backLayers) ? design.backLayers : [];
+                const printCost = (frontLayers.length ? 150 : 0) + (backLayers.length ? 150 : 0);
+                const textCount = [...frontLayers, ...backLayers].filter(layer => layer?.type === 'text').length;
+                const textCost = textCount * 50;
+                const customUnitPrice = (fabricPricing[design.fabric] || Number(process.env.CUSTOM_TSHIRT_BASE_PRICE || 299)) + printCost + textCost;
+                item.price = customUnitPrice;
+                calculatedSubtotal += customUnitPrice * quantity;
             } else {
                 // Enforce actual DB price for standard items to prevent client-side spoofing
                 const product = await Product.findById(item.productId);
                 if (!product) {
                     return res.status(404).json({ success: false, error: `Product not found: ${item.name}` });
                 }
+                if (product.stock < quantity) {
+                    return res.status(400).json({ success: false, error: `${product.name} does not have enough stock.` });
+                }
                 item.price = product.price;
-                calculatedSubtotal += (product.price * item.quantity);
+                calculatedSubtotal += product.price * quantity;
             }
         }
         
@@ -79,6 +103,18 @@ const createOrder = async (req, res) => {
         };
         
         const order = await Order.create(orderData);
+        
+        // Increment coupon usage count if applied
+        if (couponCode && calculatedDiscount > 0) {
+            try {
+                await Coupon.findOneAndUpdate(
+                    { code: couponCode.toUpperCase() },
+                    { $inc: { usedCount: 1 } }
+                );
+            } catch (couponIncError) {
+                console.warn('Could not increment coupon usedCount:', couponIncError.message);
+            }
+        }
         
         for (const item of items) {
             // Only update stock for real products (ObjectId format)
@@ -166,6 +202,13 @@ const getOrderById = async (req, res) => {
         if (!order) {
             return res.status(404).json({ success: false, error: 'Order not found' });
         }
+
+        const isOwner = order.user
+            ? String(order.user) === String(req.user.id)
+            : String(order.customer?.email || '').toLowerCase() === String(req.user.email || '').toLowerCase();
+        if (req.user.role !== 'admin' && !isOwner) {
+            return res.status(403).json({ success: false, error: 'You are not authorized to access this order.' });
+        }
         
         res.json({
             success: true,
@@ -215,13 +258,14 @@ const trackOrder = async (req, res) => {
     try {
         const { orderNumber, email } = req.query;
         
-        if (!orderNumber && !email) {
-            return res.status(400).json({ success: false, error: 'Order number or email is required' });
+        if (!orderNumber || !email) {
+            return res.status(400).json({ success: false, error: 'Order number and email are required' });
         }
         
-        let query = {};
-        if (orderNumber) query.orderNumber = orderNumber;
-        if (email) query['customer.email'] = email.toLowerCase();
+        const query = {
+            orderNumber,
+            'customer.email': email.toLowerCase()
+        };
         
         const orders = await Order.find(query).select('-__v').sort({ createdAt: -1 }).lean();
         
@@ -252,8 +296,11 @@ const cancelOrder = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Order not found' });
         }
         
-        // Make sure user owns the order (if not admin)
-        if (order.user && order.user.toString() !== req.user.id && req.user.role !== 'admin') {
+        // Make sure the user owns the order, including legacy orders linked by email.
+        const isOwner = order.user
+            ? String(order.user) === String(req.user.id)
+            : String(order.customer?.email || '').toLowerCase() === String(req.user.email || '').toLowerCase();
+        if (req.user.role !== 'admin' && !isOwner) {
             return res.status(403).json({ success: false, error: 'Not authorized to cancel this order' });
         }
         

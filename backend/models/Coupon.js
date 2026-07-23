@@ -95,8 +95,18 @@ couponSchema.methods.isValid = async function(cartTotal, userId) {
         return { valid: false, message: 'Coupon usage limit reached' };
     }
     
-    // Check per user limit (you would need to track user usage)
-    // This would require an additional collection to track per-user usage
+    // Check per user limit
+    if (userId) {
+        const Order = mongoose.model('Order');
+        const existingOrder = await Order.findOne({
+            user: userId,
+            couponCode: this.code,
+            status: { $ne: 'cancelled' }
+        });
+        if (existingOrder) {
+            return { valid: false, message: 'You have already used this coupon code' };
+        }
+    }
     
     return { valid: true, discount: this.calculateDiscount(cartTotal) };
 };

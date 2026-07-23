@@ -20,6 +20,23 @@ const productSchema = new mongoose.Schema({
         required: [true, 'Product price is required'],
         min: [0, 'Price cannot be negative']
     },
+    // Pricing with discount support (admin-configurable)
+    mrp: {
+        type: Number,
+        min: [0, 'MRP cannot be negative'],
+        default: null
+    },
+    discountPercent: {
+        type: Number,
+        min: [0, 'Discount cannot be negative'],
+        max: [100, 'Discount cannot exceed 100%'],
+        default: 0
+    },
+    sellingPrice: {
+        type: Number,
+        min: [0, 'Selling price cannot be negative'],
+        default: null
+    },
     category: {
         type: String,
         required: true,
@@ -92,7 +109,7 @@ productSchema.virtual('formattedPrice').get(function() {
         style: 'currency',
         currency: 'INR',
         maximumFractionDigits: 0
-    }).format(this.price);
+    }).format(this.sellingPrice || this.price);
 });
 
 // Create Model from Schema

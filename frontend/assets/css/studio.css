@@ -10,17 +10,20 @@
 .studio-page {
     background: var(--bg-secondary);
     min-height: 100vh;
-    height: 100vh;
-    overflow: hidden;
+    height: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .studio-layout {
     display: grid;
     grid-template-columns: 280px 1fr 300px;
-    height: calc(100vh - var(--nav-height));
+    min-height: calc(100vh - var(--nav-height));
+    height: auto;
     margin-top: var(--nav-height);
-    overflow: hidden;
+    overflow: visible;
     position: relative;
+    align-items: start;
 }
 
 @media (max-width: 1200px) {
@@ -48,8 +51,7 @@
 .studio-panel {
     background: var(--bg-primary);
     border-right: 1px solid var(--border-color);
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: visible;
     display: flex;
     flex-direction: column;
     transition: all var(--transition);
@@ -60,16 +62,29 @@
     border-left: 1px solid var(--border-color);
 }
 
+/* Keep design tools visible with the 3D preview on desktop. */
+.studio-panel-left {
+    position: sticky;
+    top: var(--nav-height);
+    align-self: start;
+}
+
 @media (max-width: 1024px) {
     .studio-panel-left {
         order: 2;
-        max-height: 400px;
+        position: relative;
+        top: auto;
+        max-height: none;
         border-right: none;
         border-top: 1px solid var(--border-color);
     }
     
     .studio-canvas-area {
         order: 1;
+        position: relative;
+        top: auto;
+        height: min(70vh, 620px);
+        min-height: 420px;
     }
     
     .studio-panel-right {
@@ -84,8 +99,7 @@
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary);
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 10;
 }
 
@@ -417,8 +431,12 @@
     justify-content: center;
     background: var(--bg-secondary);
     padding: 1.5rem;
-    overflow-y: auto;
-    position: relative;
+    overflow: hidden;
+    position: sticky;
+    top: var(--nav-height);
+    height: calc(100vh - var(--nav-height));
+    min-height: 520px;
+    align-self: start;
 }
 
 /* Canvas Toolbar */
@@ -490,6 +508,7 @@
     padding: 0;
     width: 100%;
     flex: 1;
+    min-height: 0;
 }
 
 .tshirt-mockup {
@@ -503,7 +522,7 @@
 
 #threeCanvasContainer {
     width: 100%;
-    min-height: 500px; /* Base min-height */
+    min-height: 0;
     height: 100%;
     display: flex;
     align-items: center;
@@ -594,6 +613,12 @@
 }
 
 @media (max-width: 640px) {
+    .studio-canvas-area {
+        height: 58vh;
+        min-height: 360px;
+        padding: 0.75rem;
+    }
+
     .tshirt-mockup {
         width: 260px;
         min-height: 360px;

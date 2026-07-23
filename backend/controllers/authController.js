@@ -699,6 +699,86 @@ const getSharedWishlist = async (req, res) => {
     }
 };
 
+// @desc    Login/Register using Google ID Token verified via Firebase public certs
+// @route   POST /api/auth/google-login
+// @access  Public
+const googleLogin = async (req, res) => {
+    try {
+        const { idToken } = req.body;
+        if (!idToken) {
+            return res.status(400).json({ success: false, error: 'Token is required' });
+        }
+
+        let email, name, avatar;
+
+        // Verify Firebase ID Token using correct Google public certificate endpoint
+        try {
+            const certsRes = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+            if (!certsRes.ok) {
+                throw new Error(`Failed to retrieve Firebase certificates (HTTP ${certsRes.status})`);
+            }
+            const publicKeys = await certsRes.json();
+
+            const decoded = jwt.decode(idToken, { complete: true });
+            if (!decoded || !decoded.header || !decoded.header.kid) {
+                return res.status(400).json({ success: false, error: 'Invalid token format' });
+            }
+
+            const kid = decoded.header.kid;
+            const cert = publicKeys[kid];
+            if (!cert) {
+                return res.status(400).json({ success: false, error: 'Token certificate not found. Please try signing in again.' });
+            }
+
+            const tokenInfo = jwt.verify(idToken, cert, {
+                audience: 'tshirtbusiness-bac1a',
+                issuer: 'https://securetoken.google.com/tshirtbusiness-bac1a',
+                algorithms: ['RS256']
+            });
+
+            email = tokenInfo.email;
+            name = tokenInfo.name || (email ? email.split('@')[0] : 'User');
+            avatar = tokenInfo.picture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+            console.log('[GoogleLogin] Token verified for:', email);
+
+        } catch (jwtError) {
+            console.error('[GoogleLogin] Token verification error:', jwtError.message);
+            return res.status(400).json({ success: false, error: 'Token verification failed: ' + jwtError.message });
+        }
+
+        if (!email) {
+            return res.status(400).json({ success: false, error: 'Email is required from Google auth' });
+        }
+
+        // Find or create user
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            const randomPassword = crypto.randomBytes(16).toString('hex');
+            user = await User.create({
+                name,
+                email,
+                password: randomPassword,
+                passwordConfirm: randomPassword,
+                avatar,
+                emailVerified: true
+            });
+            console.log('[GoogleLogin] New user created:', email);
+        } else {
+            console.log('[GoogleLogin] Existing user logged in:', email);
+        }
+
+        user.lastLogin = Date.now();
+        await user.save({ validateBeforeSave: false });
+
+        createSendToken(user, 200, res);
+
+    } catch (error) {
+        console.error('[GoogleLogin] Unexpected error:', error);
+        res.status(500).json({ success: false, error: 'Authentication failed. Please try again.' });
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -713,5 +793,6 @@ module.exports = {
     addToWishlist,
     removeFromWishlist,
     getWishlist,
-    getSharedWishlist
+    getSharedWishlist,
+    googleLogin
 };

@@ -89,7 +89,7 @@ const Search = {
                         <div class="suggestion-name">${Utils.escapeHtml(product.name)}</div>
                         <div class="suggestion-category">${product.category || 'T-shirt'}</div>
                     </div>
-                    <div class="suggestion-price">${Utils.formatINR(product.price)}</div>
+                    <div class="suggestion-price">${Utils.formatINR(product.sellingPrice || product.price)}</div>
                 </div>
             `).join('');
         }

@@ -203,12 +203,13 @@
     <div class="track-container">
         <div class="track-header">
             <h1>Track Your Order</h1>
-            <p>Enter your order number to check delivery status</p>
+            <p>Enter your order number and checkout email to check delivery status</p>
         </div>
         
         <div class="track-form">
             <div class="track-input-group">
                 <input type="text" id="orderNumber" class="form-control" placeholder="Enter Order Number (e.g., ORD-20240101-1234)">
+                <input type="email" id="orderEmail" class="form-control" placeholder="Email used for checkout">
                 <button id="trackBtn" class="btn btn-primary">Track Order</button>
             </div>
             <div id="trackError" class="error-message" style="display: none; margin-top: 1rem;"></div>
@@ -257,11 +258,12 @@
         
         async function trackOrder() {
             const orderNumber = document.getElementById('orderNumber').value.trim();
+            const email = document.getElementById('orderEmail').value.trim();
             const errorDiv = document.getElementById('trackError');
             const detailsDiv = document.getElementById('orderDetails');
             
-            if (!orderNumber) {
-                errorDiv.textContent = 'Please enter an order number';
+            if (!orderNumber || !email) {
+                errorDiv.textContent = 'Please enter your order number and checkout email';
                 errorDiv.style.display = 'block';
                 return;
             }
@@ -271,7 +273,7 @@
             detailsDiv.innerHTML = '<div class="admin-loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
             
             try {
-                const res = await API.get(`/orders/track?orderNumber=${encodeURIComponent(orderNumber)}`);
+                const res = await API.get(`/orders/track?orderNumber=${encodeURIComponent(orderNumber)}&email=${encodeURIComponent(email)}`);
                 
                 if (res.success && res.data && res.data.length > 0) {
                     const order = res.data[0];

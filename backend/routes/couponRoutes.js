@@ -19,6 +19,7 @@ router.post('/validate', protect, validateCoupon);
 router.post('/', adminProtect, createCoupon);
 router.get('/', adminProtect, getAllCoupons);
 router.put('/:id', adminProtect, updateCoupon);
+router.patch('/:id', adminProtect, updateCoupon);
 router.delete('/:id', adminProtect, deleteCoupon);
 
 module.exports = router;

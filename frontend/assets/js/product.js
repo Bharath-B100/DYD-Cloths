@@ -12,6 +12,7 @@ const Product = {
     selectedSize: null,
 
     init: async () => {
+        await AuthManager.ready;
         const params = Utils.getQueryParams();
         const id = params.id || localStorage.getItem('currentProductId');
         
@@ -52,10 +53,26 @@ const Product = {
 
         // Basic Info
         Utils.setHTML('productTitle', Utils.escapeHtml(p.name || 'Product'));
-        Utils.setHTML('productPrice', Utils.formatINR(p.price || 0));
         Utils.setHTML('productDesc', Utils.escapeHtml(p.description || 'No description available'));
         Utils.setHTML('productCategory', Utils.escapeHtml(p.category || 'Uncategorized'));
         Utils.setHTML('bcProductName', Utils.escapeHtml(p.name || 'Product'));
+
+        // Price display — with discount if admin has set one
+        const priceEl = document.getElementById('productPrice');
+        if (priceEl) {
+            const sellPrice = p.sellingPrice || p.price || 0;
+            const mrp = p.mrp;
+            const disc = p.discountPercent || 0;
+            const hasDiscount = mrp && mrp > sellPrice && disc > 0;
+            if (hasDiscount) {
+                priceEl.innerHTML = `
+                    <span class="price-mrp" style="text-decoration:line-through;color:var(--text-muted);font-size:0.9em;margin-right:6px;">${Utils.formatINR(mrp)}</span>
+                    <span class="price-sell" style="color:#10b981;font-weight:700;">${Utils.formatINR(sellPrice)}</span>
+                    <span class="discount-badge" style="background:#10b981;color:#fff;font-size:0.72rem;font-weight:700;padding:3px 8px;border-radius:20px;margin-left:8px;vertical-align:middle;">${disc}% OFF</span>`;
+            } else {
+                priceEl.textContent = Utils.formatINR(sellPrice);
+            }
+        }
         
         const img = document.getElementById('mainProductImage');
         if (img) img.src = p.mainImage || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400';
@@ -87,7 +104,7 @@ const Product = {
 
         // Wishlist State
         const wishlistBtn = document.getElementById('wishlistBtn');
-        if (wishlistBtn && AuthManager.user?.wishlist?.includes(p._id)) {
+        if (wishlistBtn && AuthManager.hasWishlistItem(p._id)) {
             wishlistBtn.classList.add('active');
             const icon = wishlistBtn.querySelector('i');
             if (icon) icon.className = 'fas fa-heart';
@@ -149,7 +166,18 @@ const Product = {
             const reviews = Array.isArray(reviewsData) ? reviewsData : (reviewsData.reviews || []);
 
             if (reviews.length === 0) {
-                container.innerHTML = '<p class="no-reviews">No reviews yet. Be the first to review!</p>';
+                container.innerHTML = `
+                    <div class="empty-reviews-card">
+                        <div class="empty-reviews-icon">
+                            <i class="far fa-comment-alt"></i>
+                        </div>
+                        <h4>No Reviews Yet</h4>
+                        <p>Be the first customer to share your experience with this item!</p>
+                        <button class="btn btn-empty-review" onclick="document.getElementById('writeReviewBtn')?.click()">
+                            <i class="fas fa-edit"></i> Write the First Review
+                        </button>
+                    </div>
+                `;
                 return;
             }
 
@@ -276,13 +304,15 @@ const Product = {
                 if (icon) icon.className = isActive ? 'far fa-heart' : 'fas fa-heart';
 
                 try {
+                    let response;
                     if (isActive) {
-                        await API.delete(`/auth/wishlist/${Product.data._id}`);
+                        response = await API.delete(`/auth/wishlist/${Product.data._id}`);
                         Utils.showToast('Removed from wishlist', 'success');
                     } else {
-                        await API.post(`/auth/wishlist/${Product.data._id}`);
+                        response = await API.post(`/auth/wishlist/${Product.data._id}`);
                         Utils.showToast('Added to wishlist', 'success');
                     }
+                    AuthManager.setWishlist(response.data?.wishlist || []);
                 } catch (err) {
                     // Revert on error
                     btn.classList.toggle('active');
@@ -306,6 +336,86 @@ const Product = {
                 Product.updateStarSelection(parseInt(document.getElementById('reviewRating').value));
             });
         });
+
+        // Size Guide Modal Handling
+        const sizeGuideBtn = document.getElementById('sizeGuideBtn');
+        const sizeGuideModal = document.getElementById('sizeGuideModal');
+        const closeSizeGuide = document.getElementById('closeSizeGuide');
+        const calcSizeBtn = document.getElementById('calcSizeBtn');
+
+        if (sizeGuideBtn && sizeGuideModal) {
+            sizeGuideBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                sizeGuideModal.classList.add('active');
+            });
+        }
+
+        if (closeSizeGuide && sizeGuideModal) {
+            closeSizeGuide.addEventListener('click', () => {
+                sizeGuideModal.classList.remove('active');
+            });
+        }
+
+        if (sizeGuideModal) {
+            sizeGuideModal.addEventListener('click', (e) => {
+                if (e.target === sizeGuideModal) {
+                    sizeGuideModal.classList.remove('active');
+                }
+            });
+        }
+
+        if (calcSizeBtn) {
+            calcSizeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const height = parseFloat(document.getElementById('sgHeight')?.value);
+                const weight = parseFloat(document.getElementById('sgWeight')?.value);
+                const fit = document.getElementById('sgFit')?.value || 'regular';
+
+                if (!height || !weight || isNaN(height) || isNaN(weight)) {
+                    Utils.showToast('Please enter valid height (cm) and weight (kg)', 'error');
+                    return;
+                }
+
+                // T-Shirt Size Recommendation Algorithm
+                let recommended = 'M';
+
+                if (weight < 55 || (height < 165 && weight < 60)) {
+                    recommended = 'S';
+                } else if (weight >= 55 && weight <= 70) {
+                    recommended = 'M';
+                } else if (weight > 70 && weight <= 82) {
+                    recommended = 'L';
+                } else if (weight > 82 && weight <= 95) {
+                    recommended = 'XL';
+                } else {
+                    recommended = 'XXL';
+                }
+
+                // Adjust for fit preference
+                const sizes = ['S', 'M', 'L', 'XL', 'XXL'];
+                let idx = sizes.indexOf(recommended);
+                if (fit === 'loose' && idx < sizes.length - 1) idx++;
+                if (fit === 'tight' && idx > 0) idx--;
+                recommended = sizes[idx];
+
+                const badge = document.getElementById('recommendedSizeBadge');
+                const resultBox = document.getElementById('sizeResult');
+                const reasoning = document.getElementById('sizeReasoning');
+
+                if (badge) badge.textContent = recommended;
+                if (reasoning) reasoning.textContent = `Recommended for ${height}cm, ${weight}kg with a ${fit} fit.`;
+                if (resultBox) resultBox.classList.remove('hidden');
+
+                // Auto-select size in product options
+                const targetBtn = document.querySelector(`.size-btn[data-size="${recommended}"]`);
+                if (targetBtn) {
+                    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                    targetBtn.classList.add('active');
+                    Product.selectedSize = recommended;
+                    Utils.showToast(`Selected size ${recommended}`, 'success');
+                }
+            });
+        }
     },
 
     setupReviewForm: () => {

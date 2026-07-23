@@ -43,7 +43,34 @@ const AuthManager = {
 
             throw new Error('Login response was missing user details');
         } catch (error) {
-            Utils.showToast('Wrong password or email!', 'error');
+            Utils.showToast(error.message || 'Unable to sign in. Please try again.', 'error');
+            return { success: false, error: error.message };
+        }
+    },
+
+    loginWithGoogle: async (idToken) => {
+        try {
+            console.log("loginWithGoogle: sending token to backend...");
+            const result = await API.post('/auth/google-login', { idToken });
+            console.log("loginWithGoogle API response:", result);
+            const user = result.data?.user || result.user;
+            console.log("loginWithGoogle user object:", user);
+            
+            if (result.success && result.token && user) {
+                AuthManager.setSession(result.token, user);
+                AuthManager.updateNavbarUI();
+                Utils.showToast('Logged in with Google successfully', 'success');
+                if (window.CartManager) window.CartManager.fetchFromServer();
+                
+                console.log("loginWithGoogle: redirecting user...");
+                AuthManager.redirectByRole(user);
+                return { success: true };
+            }
+
+            throw new Error('Google Login response was missing user details');
+        } catch (error) {
+            console.error("loginWithGoogle Error:", error);
+            Utils.showToast(error.message || 'Unable to sign in with Google.', 'error');
             return { success: false, error: error.message };
         }
     },
@@ -102,6 +129,27 @@ const AuthManager = {
     },
 
     /**
+     * Wishlist entries can be product IDs or populated product objects.
+     * Normalize them before comparing so the UI remains correct after a reload.
+     */
+    hasWishlistItem: (productId) => {
+        const targetId = String(productId);
+        return (AuthManager.user?.wishlist || []).some((item) =>
+            String(item?._id || item) === targetId
+        );
+    },
+
+    setWishlist: (wishlist) => {
+        if (!AuthManager.user) return;
+
+        AuthManager.user = {
+            ...AuthManager.user,
+            wishlist: Array.isArray(wishlist) ? wishlist : []
+        };
+        localStorage.setItem('user', JSON.stringify(AuthManager.user));
+    },
+
+    /**
      * Check if user is logged in
      */
     isLoggedIn: () => {
@@ -124,8 +172,11 @@ const AuthManager = {
 
         if (currentUser.role === 'admin') {
             window.location.href = 'admin.html';
-        } else if (window.location.pathname.includes('login.html') || window.location.pathname.includes('register.html')) {
-            window.location.href = 'index.html';
+        } else {
+            const path = window.location.pathname.toLowerCase();
+            if (path.includes('login') || path.includes('register') || path === '' || path === '/') {
+                window.location.href = 'index.html';
+            }
         }
     },
 
@@ -159,15 +210,16 @@ const AuthManager = {
 
         if (AuthManager.isLoggedIn()) {
             const isUserAdmin = AuthManager.isAdmin();
-            const userName = isUserAdmin ? 'ADMIN' : (AuthManager.user.name || AuthManager.user.email || 'Account');
+            const rawName = isUserAdmin ? 'Admin' : (AuthManager.user.name || AuthManager.user.email || 'Account');
             const dashboardLink = isUserAdmin ? 'admin.html' : 'profile.html';
-            const dashboardIcon = isUserAdmin ? 'fa-user-shield' : 'fa-user';
+            const dashboardIcon = isUserAdmin ? 'fa-user-shield' : 'fa-user-circle';
             
             const authHTML = `
                 <div class="user-dropdown">
-                    <span class="user-greeting" title="${Utils.escapeHtml(userName)}"><i class="fas ${dashboardIcon}"></i> ${Utils.escapeHtml(userName)}</span>
-                    <a href="${dashboardLink}" class="auth-link profile-link">Dashboard</a>
-                    <button class="auth-link logout-link navbar-logout-btn" style="padding: 0.5rem 1rem;" type="button" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
+                    <a href="${dashboardLink}" class="user-greeting user-greeting-link" title="Dashboard: ${Utils.escapeHtml(rawName)}">
+                        <i class="fas ${dashboardIcon}"></i> <span>${Utils.escapeHtml(rawName)}</span>
+                    </a>
+                    <button class="auth-link logout-link navbar-logout-btn" type="button" title="Logout"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
             `;
             
@@ -281,13 +333,56 @@ const AuthManager = {
             const result = await AuthManager.register(userData);
             if (!result.success && submitButton) submitButton.disabled = false;
         });
+
+        const googleAuthBtn = document.getElementById('googleAuthBtn');
+        googleAuthBtn?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (googleAuthBtn.disabled) return;
+            
+            if (!window.firebaseAuth?.signInWithGoogle) {
+                Utils.showToast('Firebase Auth SDK is loading, please try again.', 'info');
+                return;
+            }
+            
+            googleAuthBtn.disabled = true;
+            try {
+                console.log("Google Sign-In button clicked: initiating popup...");
+                const res = await window.firebaseAuth.signInWithGoogle();
+                if (res.success && res.idToken) {
+                    await AuthManager.loginWithGoogle(res.idToken);
+                } else if (res.error) {
+                    let friendlyMsg = res.error;
+                    let toastType = 'error';
+
+                    if (res.error.includes('auth/popup-closed-by-user')) {
+                        friendlyMsg = 'Google Sign-In was cancelled.';
+                        toastType = 'info';
+                    } else if (res.error.includes('auth/popup-blocked')) {
+                        friendlyMsg = 'Google login popup was blocked. Please allow popups in your browser.';
+                        toastType = 'warning';
+                    } else if (res.error.includes('auth/cancelled-popup-request')) {
+                        friendlyMsg = 'Login request cancelled. Please try again.';
+                        toastType = 'info';
+                    } else if (res.error.includes('auth/network-request-failed')) {
+                        friendlyMsg = 'Connection error. Please check your internet connection.';
+                    }
+                    
+                    Utils.showToast(friendlyMsg, toastType);
+                }
+            } catch (err) {
+                console.error("Google Auth popup click handler error:", err);
+            } finally {
+                googleAuthBtn.disabled = false;
+            }
+        });
     }
 };
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     AuthManager.bindAuthForms();
-    AuthManager.init();
+    AuthManager.ready = AuthManager.init();
 });
 
 window.AuthManager = AuthManager;

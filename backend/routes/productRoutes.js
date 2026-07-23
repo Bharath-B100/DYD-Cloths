@@ -12,6 +12,7 @@ const {
 } = require('../controllers/productController');
 
 const reviewRouter = require('./reviewRoutes');
+const { adminProtect } = require('../middleware/admin');
 
 // Re-route into other resource routers
 router.use('/:productId/reviews', reviewRouter);
@@ -21,9 +22,9 @@ router.get('/', getProducts);
 router.get('/categories', getCategories);
 router.get('/:id', getProductById);
 
-// Admin routes (will add authentication middleware in Phase 5)
-router.post('/', createProduct);
-router.put('/:id', updateProduct);
-router.delete('/:id', deleteProduct);
+// Admin routes
+router.post('/', adminProtect, createProduct);
+router.put('/:id', adminProtect, updateProduct);
+router.delete('/:id', adminProtect, deleteProduct);
 
 module.exports = router;
