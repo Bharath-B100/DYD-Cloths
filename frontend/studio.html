@@ -211,6 +211,35 @@
                 <h3><i class="fas fa-sliders-h"></i> Properties</h3>
             </div>
 
+            <!-- Image Properties Panel -->
+            <div class="tool-section" id="imagePropertiesPanel" style="display: none;">
+                <label class="tool-label">Image Options</label>
+                
+                <label class="tool-label" style="margin-top:12px">Resize (Scale)</label>
+                <div class="range-row" style="display:flex; align-items:center; gap:10px;">
+                    <input type="range" id="designScale" min="10" max="300" value="100" class="studio-range" style="flex:1;">
+                    <span id="designScaleValue" style="min-width:45px; text-align:right; font-family:monospace;">100%</span>
+                </div>
+
+                <label class="tool-label" style="margin-top:12px">Move Horizontally</label>
+                <div class="range-row" style="display:flex; align-items:center; gap:10px;">
+                    <input type="range" id="designPosX" min="-100" max="100" value="0" class="studio-range" style="flex:1;">
+                    <span id="designPosXValue" style="min-width:45px; text-align:right; font-family:monospace;">0px</span>
+                </div>
+
+                <label class="tool-label" style="margin-top:12px">Move Vertically</label>
+                <div class="range-row" style="display:flex; align-items:center; gap:10px;">
+                    <input type="range" id="designPosY" min="-100" max="100" value="0" class="studio-range" style="flex:1;">
+                    <span id="designPosYValue" style="min-width:45px; text-align:right; font-family:monospace;">0px</span>
+                </div>
+
+                <label class="tool-label" style="margin-top:12px">Rotate</label>
+                <div class="range-row" style="display:flex; align-items:center; gap:10px;">
+                    <input type="range" id="designRot" min="0" max="360" value="0" class="studio-range" style="flex:1;">
+                    <span id="designRotValue" style="min-width:45px; text-align:right; font-family:monospace;">0°</span>
+                </div>
+            </div>
+
             <!-- Text Properties (shown when text selected) -->
             <div class="tool-section" id="textPropertiesPanel">
                 <label class="tool-label">Add / Edit Text</label>

@@ -168,6 +168,27 @@ const Studio3D = {
         Studio3D.syncSlidersFromActiveLayer();
         Studio3D.updateLayers();
         Studio3D.renderDesignToTexture();
+
+        // Dynamically toggle properties panels
+        const activeLayer = Studio3D.getActiveLayer();
+        const textPanel = document.getElementById('textPropertiesPanel');
+        const imagePanel = document.getElementById('imagePropertiesPanel');
+        const aiPanel = document.getElementById('aiMagicPanel');
+
+        if (activeLayer) {
+            if (activeLayer.type === 'text') {
+                if (textPanel) textPanel.style.display = 'block';
+                if (imagePanel) imagePanel.style.display = 'none';
+                if (aiPanel) aiPanel.style.display = 'none';
+            } else if (activeLayer.type === 'image') {
+                if (textPanel) textPanel.style.display = 'none';
+                if (imagePanel) imagePanel.style.display = 'block';
+                if (aiPanel) aiPanel.style.display = 'none';
+            }
+        } else {
+            if (textPanel) textPanel.style.display = 'none';
+            if (imagePanel) imagePanel.style.display = 'none';
+        }
     },
 
     syncSlidersFromActiveLayer: () => {
@@ -176,19 +197,31 @@ const Studio3D = {
         
         const scaleSlider = document.getElementById('designScale');
         const scaleVal = document.getElementById('designScaleValue');
-        if (scaleSlider) { scaleSlider.value = Math.round(layer.scale * 100); if(scaleVal) scaleVal.textContent = Math.round(layer.scale * 100); }
+        if (scaleSlider) { 
+            scaleSlider.value = Math.round(layer.scale * 100); 
+            if (scaleVal) scaleVal.textContent = Math.round(layer.scale * 100) + '%'; 
+        }
         
         const posXSlider = document.getElementById('designPosX');
         const posXVal = document.getElementById('designPosXValue');
-        if (posXSlider) { posXSlider.value = Math.round(layer.x * 100); if(posXVal) posXVal.textContent = Math.round(layer.x * 100); }
+        if (posXSlider) { 
+            posXSlider.value = Math.round(layer.x * 100); 
+            if (posXVal) posXVal.textContent = Math.round(layer.x * 100) + 'px'; 
+        }
         
         const posYSlider = document.getElementById('designPosY');
         const posYVal = document.getElementById('designPosYValue');
-        if (posYSlider) { posYSlider.value = Math.round(layer.y * 100); if(posYVal) posYVal.textContent = Math.round(layer.y * 100); }
+        if (posYSlider) { 
+            posYSlider.value = Math.round(layer.y * 100); 
+            if (posYVal) posYVal.textContent = Math.round(layer.y * 100) + 'px'; 
+        }
         
         const rotSlider = document.getElementById('designRot');
         const rotVal = document.getElementById('designRotValue');
-        if (rotSlider) { rotSlider.value = Math.round(layer.rotation); if(rotVal) rotVal.textContent = Math.round(layer.rotation); }
+        if (rotSlider) { 
+            rotSlider.value = Math.round(layer.rotation); 
+            if (rotVal) rotVal.textContent = Math.round(layer.rotation) + '°'; 
+        }
     },
 
     syncTextControlsFromActiveLayer: () => {
@@ -696,7 +729,7 @@ const Studio3D = {
         });
         
         // Design Transformation Sliders
-        const setupSlider = (id, prop, isMultiplier = 1) => {
+        const setupSlider = (id, prop, isMultiplier = 1, unit = '') => {
             const slider = document.getElementById(id);
             const valueSpan = document.getElementById(`${id}Value`);
             if (slider) {
@@ -704,17 +737,17 @@ const Studio3D = {
                     const activeLayer = Studio3D.getActiveLayer();
                     if (activeLayer) {
                         activeLayer[prop] = parseFloat(e.target.value) * isMultiplier;
-                        if (valueSpan) valueSpan.textContent = e.target.value;
+                        if (valueSpan) valueSpan.textContent = e.target.value + unit;
                         Studio3D.renderDesignToTexture();
                     }
                 });
             }
         };
         
-        setupSlider('designScale', 'scale', 0.01);
-        setupSlider('designPosX', 'x', 0.01);
-        setupSlider('designPosY', 'y', 0.01);
-        setupSlider('designRot', 'rotation', 1);
+        setupSlider('designScale', 'scale', 0.01, '%');
+        setupSlider('designPosX', 'x', 0.01, 'px');
+        setupSlider('designPosY', 'y', 0.01, 'px');
+        setupSlider('designRot', 'rotation', 1, '°');
 
         // Add Text logic
         const btnApplyText = document.getElementById('btnApplyText');
