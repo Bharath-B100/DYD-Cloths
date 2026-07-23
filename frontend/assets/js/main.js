@@ -25,6 +25,17 @@ const App = {
         
         // Sync cart count immediately
         App.updateCartBadge();
+
+        // Prefetch 3D model in background for faster Design Studio loading
+        if (!window.location.pathname.includes('studio.html')) {
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    fetch('assets/oversized_t-shirt.glb')
+                        .then(() => console.log('[App] 3D Model preloaded successfully'))
+                        .catch(() => {});
+                }, 1500);
+            });
+        }
     },
 
     /**
