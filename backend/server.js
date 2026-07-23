@@ -41,10 +41,12 @@ const localDevelopmentOrigins = [
     'http://localhost:5000',
     'http://127.0.0.1:5000',
     'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://127.0.0.1:3000',
+    'https://dyd-cloths.onrender.com',
+    'http://dyd-cloths.onrender.com'
 ];
 const allowedOrigins = process.env.NODE_ENV === 'production'
-    ? configuredOrigins
+    ? [...configuredOrigins, 'https://dyd-cloths.onrender.com', 'http://dyd-cloths.onrender.com']
     : [...new Set([...configuredOrigins, ...localDevelopmentOrigins])];
 
 app.disable('x-powered-by');
@@ -58,7 +60,7 @@ app.use(helmet({
 }));
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.onrender.com')) {
             return callback(null, true);
         }
         return callback(new Error('Origin not allowed by CORS policy'));
