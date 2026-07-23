@@ -479,9 +479,6 @@ const App = {
                         <img src="${product.mainImage || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'}"
                              alt="${product.name || 'Product'}"
                              onerror="this.src='https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400'">
-                        <div class="product-overlay">
-                            <span class="btn btn-primary">View Product</span>
-                        </div>
                     </div>
                     <div class="product-info">
                         <span class="product-category">${product.category || 'T-shirt'}</span>

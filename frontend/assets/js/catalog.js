@@ -68,9 +68,6 @@ const CatalogPage = {
                     <button class="btn-add" onclick="CatalogPage.addToCart('${product._id}')">
                         <i class="fas fa-cart-plus"></i> Add to Cart
                     </button>
-                    <button class="btn-details">
-                        <i class="fas fa-eye"></i> View Details
-                    </button>
                 </div>
             </div>
             <div class="product-info">
