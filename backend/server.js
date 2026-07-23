@@ -3,6 +3,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const https = require('https');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
@@ -69,6 +70,31 @@ app.use(cors({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(cookieParser());
+
+// Proxy Firebase Auth & Config requests to bypass third-party cookie blocking
+const proxyFirebase = (req, res) => {
+    const targetUrl = `https://tshirtbusiness-bac1a.firebaseapp.com${req.originalUrl}`;
+    const connector = https.request(targetUrl, {
+        method: req.method,
+        headers: {
+            ...req.headers,
+            host: 'tshirtbusiness-bac1a.firebaseapp.com' // rewrite host
+        }
+    }, (connectorResponse) => {
+        res.writeHead(connectorResponse.statusCode, connectorResponse.headers);
+        connectorResponse.pipe(res);
+    });
+    
+    req.pipe(connector);
+    
+    connector.on('error', (err) => {
+        console.error('Firebase Auth Proxy Error:', err);
+        res.status(500).send('Authentication proxy error');
+    });
+};
+
+app.all('/__/auth/*', proxyFirebase);
+app.all('/__/firebase/*', proxyFirebase);
 
 // Serve Static Files from frontend directory with CORS allowed
 app.use(express.static(path.join(__dirname, '../frontend'), {

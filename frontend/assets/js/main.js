@@ -292,8 +292,10 @@ const App = {
         // Save to global window so other scripts (like checkout.js) can access
         window.SiteSettings = settings;
 
-        // Dynamic Announcement Banner
-        if (settings.promo_banner_show === 'true' && settings.promo_banner_text) {
+        // Dynamic Announcement Banner (Only show on homepage)
+        const isHomePage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname === '';
+        
+        if (isHomePage && settings.promo_banner_show === 'true' && settings.promo_banner_text) {
             let banner = document.getElementById('promoAnnouncementBanner');
             if (!banner) {
                 banner = document.createElement('div');
