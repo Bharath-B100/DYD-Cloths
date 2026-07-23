@@ -7,7 +7,9 @@
 
     const FIREBASE_CONFIG = {
         apiKey: "AIzaSyD3db2yC0MkxwtWAGcFs4PHC8fA6Hx52ro",
-        authDomain: window.location.host,
+        authDomain: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'tshirtbusiness-bac1a.firebaseapp.com'
+            : window.location.host,
         projectId: "tshirtbusiness-bac1a",
         storageBucket: "tshirtbusiness-bac1a.firebasestorage.app",
         messagingSenderId: "385040815590",
