@@ -72,8 +72,12 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 app.use(cookieParser());
 
-// Serve Static Files from frontend directory
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Serve Static Files from frontend directory with CORS allowed
+app.use(express.static(path.join(__dirname, '../frontend'), {
+    setHeaders: (res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+}));
 
 // Request logging middleware
 app.use((req, res, next) => {
