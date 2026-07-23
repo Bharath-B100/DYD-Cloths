@@ -392,6 +392,9 @@ const Studio3D = {
 
         // Load Model
         const loader = new GLTFLoader();
+        if (window.MeshoptDecoder) {
+            loader.setMeshoptDecoder(window.MeshoptDecoder);
+        }
         loader.load(
             'assets/oversized_t-shirt.glb',
             (gltf) => {
