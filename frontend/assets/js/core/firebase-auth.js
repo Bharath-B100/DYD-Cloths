@@ -52,33 +52,6 @@
 
             initialized = true;
             console.log('[FirebaseAuth] Initialized successfully.');
-
-            // Listen for redirect login result immediately
-            auth.getRedirectResult().then(async (result) => {
-                if (result && result.user) {
-                    const idToken = await result.user.getIdToken();
-                    console.log('[FirebaseAuth] Redirect sign-in result retrieved successfully:', result.user.email);
-                    
-                    // Poll until AuthManager is loaded and initialized on the page
-                    const interval = setInterval(async () => {
-                        if (window.AuthManager && window.AuthManager.loginWithGoogle) {
-                            clearInterval(interval);
-                            if (window.Utils && window.Utils.showToast) {
-                                window.Utils.showToast('Google Sign-In successful. Logging in...', 'success');
-                            }
-                            await window.AuthManager.loginWithGoogle(idToken);
-                        }
-                    }, 100);
-                }
-            }).catch((error) => {
-                console.error('[FirebaseAuth] getRedirectResult error:', error.code, error.message);
-                if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                    if (window.Utils && window.Utils.showToast) {
-                        window.Utils.showToast('Google login failed: ' + error.message, 'error');
-                    }
-                }
-            });
-
             return true;
         } catch (err) {
             console.error('[FirebaseAuth] Initialization failed:', err);
@@ -86,7 +59,7 @@
         }
     }
 
-    // Sign in with Google redirect
+    // Sign in with Google popup
     async function signInWithGoogle() {
         const ready = await initFirebase();
         if (!ready) {
@@ -94,11 +67,12 @@
         }
 
         try {
-            console.log('[FirebaseAuth] Initiating Redirect Sign-In...');
-            await auth.signInWithRedirect(provider);
-            return { success: true, redirecting: true };
+            const result = await auth.signInWithPopup(provider);
+            const idToken = await result.user.getIdToken();
+            console.log('[FirebaseAuth] Popup sign-in successful:', result.user.email);
+            return { success: true, idToken, user: result.user };
         } catch (error) {
-            console.error('[FirebaseAuth] Redirect sign-in error:', error.code, error.message);
+            console.error('[FirebaseAuth] Popup sign-in error:', error.code, error.message);
             return { success: false, error: error.message, code: error.code };
         }
     }

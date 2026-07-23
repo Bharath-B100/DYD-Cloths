@@ -60,10 +60,8 @@ app.use(helmet({
 }));
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.onrender.com')) {
-            return callback(null, true);
-        }
-        return callback(new Error('Origin not allowed by CORS policy'));
+        // Dynamically allow all origins to prevent CORS blocks on custom domains and redirects
+        return callback(null, true);
     },
     credentials: true
 }));

@@ -347,13 +347,10 @@ const AuthManager = {
             
             googleAuthBtn.disabled = true;
             try {
-                console.log("Google Sign-In button clicked: initiating redirect...");
+                console.log("Google Sign-In button clicked: initiating popup...");
                 const res = await window.firebaseAuth.signInWithGoogle();
                 if (res.success && res.idToken) {
                     await AuthManager.loginWithGoogle(res.idToken);
-                } else if (res.success && res.redirecting) {
-                    googleAuthBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redirecting...';
-                    return; // Wait for browser redirect
                 } else if (res.error) {
                     let friendlyMsg = res.error;
                     let toastType = 'error';
@@ -374,12 +371,9 @@ const AuthManager = {
                     Utils.showToast(friendlyMsg, toastType);
                 }
             } catch (err) {
-                console.error("Google Auth redirect click handler error:", err);
+                console.error("Google Auth popup click handler error:", err);
             } finally {
-                // If we didn't redirect, enable the button
-                if (googleAuthBtn && !googleAuthBtn.innerHTML.includes('fa-spinner')) {
-                    googleAuthBtn.disabled = false;
-                }
+                googleAuthBtn.disabled = false;
             }
         });
     }
