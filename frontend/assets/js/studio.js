@@ -485,6 +485,23 @@ const Studio3D = {
         // Animation Loop
         Studio3D.renderer.setAnimationLoop(() => {
             Studio3D.controls.update();
+
+            // Auto swap front/back UI options based on camera orbit position
+            if (Studio3D.modelContainer && Studio3D.camera) {
+                const isModelRotated = Math.abs(Studio3D.modelContainer.rotation.y - Math.PI) < 0.1;
+                const isCameraInPositiveZ = Studio3D.camera.position.z > 0;
+                let visibleSide = 'front';
+                if (isModelRotated) {
+                    visibleSide = isCameraInPositiveZ ? 'back' : 'front';
+                } else {
+                    visibleSide = isCameraInPositiveZ ? 'front' : 'back';
+                }
+
+                if (visibleSide !== Studio3D.currentSide) {
+                    Studio3D.setSide(visibleSide, false);
+                }
+            }
+
             Studio3D.renderer.render(Studio3D.scene, Studio3D.camera);
         });
     },
@@ -987,7 +1004,7 @@ const Studio3D = {
         }
     },
 
-    setSide: (side) => {
+    setSide: (side, rotateModel = true) => {
         if (!Studio3D.modelContainer) return;
         Studio3D.currentSide = side;
         document.querySelectorAll('.side-btn').forEach(btn => btn.classList.remove('active'));
@@ -997,12 +1014,17 @@ const Studio3D = {
 
         if (side === 'front') {
             document.getElementById('btnFront').classList.add('active');
-            Studio3D.modelContainer.rotation.y = 0;
+            if (rotateModel) {
+                Studio3D.modelContainer.rotation.y = 0;
+            }
+            if (frontSlot) frontSlot.style.display = 'block';
             if (frontSlot) frontSlot.style.display = 'block';
             if (backSlot) backSlot.style.display = 'none';
         } else {
             document.getElementById('btnBack').classList.add('active');
-            Studio3D.modelContainer.rotation.y = Math.PI;
+            if (rotateModel) {
+                Studio3D.modelContainer.rotation.y = Math.PI;
+            }
             if (frontSlot) frontSlot.style.display = 'none';
             if (backSlot) backSlot.style.display = 'block';
         }
