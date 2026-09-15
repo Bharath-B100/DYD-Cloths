@@ -124,12 +124,8 @@ app.use(['/api/orders', '/api/user/cart', '/api/ai/remove-bg'], express.json({ l
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
-// Serve Static Files from frontend/dist directory with CORS allowed
-app.use(express.static(path.join(__dirname, '../frontend/dist'), {
-    setHeaders: (res) => {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-}));
+// Use the same configured origin policy for assets and API responses.
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Request logging middleware
 app.use((req, res, next) => {

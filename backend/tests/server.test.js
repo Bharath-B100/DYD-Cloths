@@ -20,4 +20,8 @@ test('SPA routes render; offline API and disallowed origins fail promptly', asyn
     assert.equal((await fetch(base + '/api/health', { headers: { Origin: 'https://untrusted.example' } })).status, 403);
     const allowed = await fetch(base + '/api/health', { headers: { Origin: 'http://localhost:5173' } });
     assert.equal(allowed.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+    const asset = await fetch(base + '/favicon.svg', { headers: { Origin: 'http://localhost:5173' } });
+    assert.equal(asset.status, 200);
+    assert.equal(asset.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+    assert.equal((await fetch(base + '/favicon.svg', { headers: { Origin: 'https://untrusted.example' } })).status, 403);
 });
