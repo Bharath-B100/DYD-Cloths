@@ -4,24 +4,24 @@ const Product = require('../models/Product');
 
 exports.getSitemap = async (req, res) => {
     try {
-        const baseUrl = 'http://localhost:5000';
+        const baseUrl = (process.env.PUBLIC_SITE_URL || 'http://localhost:5000').replace(/\/$/, '').replace(/&/g, '&amp;');
         const products = await Product.find({ isActive: true }).select('_id updatedAt');
         
         const staticPages = [
             '',
-            '/shop.html',
-            '/studio.html',
-            '/oversized-tshirts.html',
-            '/premium-cotton-tshirts.html',
-            '/bulk-cotton-tshirts.html',
-            '/support.html',
-            '/faq.html',
-            '/shipping-policy.html',
-            '/returns-exchanges.html',
-            '/privacy-policy.html',
-            '/terms-of-service.html',
-            '/login.html',
-            '/register.html'
+            '/shop',
+            '/studio',
+            '/shop?catalog=oversized',
+            '/shop?catalog=premium-cotton',
+            '/shop?catalog=bulk-cotton',
+            '/support',
+            '/faq',
+            '/shipping-policy',
+            '/returns-exchanges',
+            '/privacy-policy',
+            '/terms-of-service',
+            '/login',
+            '/register'
         ];
         
         let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -37,7 +37,7 @@ exports.getSitemap = async (req, res) => {
         
         products.forEach(product => {
             xml += '  <url>\n';
-            xml += `    <loc>${baseUrl}/product.html?id=${product._id}</loc>\n`;
+            xml += `    <loc>${baseUrl}/product/${product._id}</loc>\n`;
             xml += `    <lastmod>${new Date(product.updatedAt).toISOString()}</lastmod>\n`;
             xml += `    <changefreq>daily</changefreq>\n`;
             xml += `    <priority>0.9</priority>\n`;
@@ -55,14 +55,14 @@ exports.getSitemap = async (req, res) => {
 };
 
 exports.getRobotsTxt = (req, res) => {
-    const baseUrl = 'http://localhost:5000';
+    const baseUrl = (process.env.PUBLIC_SITE_URL || 'http://localhost:5000').replace(/\/$/, '').replace(/&/g, '&amp;');
     
     let txt = 'User-agent: *\n';
     txt += 'Allow: /\n';
     txt += 'Disallow: /api/\n';
-    txt += 'Disallow: /profile.html\n';
-    txt += 'Disallow: /admin.html\n';
-    txt += 'Disallow: /checkout.html\n';
+    txt += 'Disallow: /profile\n';
+    txt += 'Disallow: /admin\n';
+    txt += 'Disallow: /checkout\n';
     txt += `Sitemap: ${baseUrl}/sitemap.xml\n`;
     
     res.header('Content-Type', 'text/plain');

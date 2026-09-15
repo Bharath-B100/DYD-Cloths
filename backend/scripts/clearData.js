@@ -12,7 +12,8 @@ async function clearDatabase() {
         console.log('🧹 Starting database clearing...');
         
         // Connect to database
-        await connectDB();
+        require('../utils/maintenance').requireDisposableDatabase();
+        if (!await connectDB()) throw new Error('Database unavailable');
         
         // Clear collections
         console.log('🧹 Clearing products...');

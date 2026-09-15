@@ -4,31 +4,38 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Order = require('../models/Order');
+const Product = require('../models/Product');
+const mongoose = require('mongoose');
+const validator = require('validator');
+const emailService = require('../services/email');
+const normalizeEmail = value => typeof value === 'string' ? value.trim().toLowerCase() : '';
 
 // ======================
 // HELPER FUNCTIONS
 // ======================
 
 // Generate JWT Token
-const generateToken = (userId) => {
+const generateToken = (user) => {
     return jwt.sign(
-        { id: userId },
+        { id: user._id, version: user.sessionVersion || 0 },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 };
 
 // Create and send token response
 const createSendToken = (user, statusCode, res) => {
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     
     // Remove password from output
     user.password = undefined;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
     
     // Cookie options
     const cookieOptions = {
         expires: new Date(
-            Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+            Date.now() + (Number(process.env.JWT_COOKIE_EXPIRES_IN) || 7) * 24 * 60 * 60 * 1000
         ),
         httpOnly: true, // Cookie cannot be accessed by JavaScript
         secure: process.env.NODE_ENV === 'production', // HTTPS only in production
@@ -56,10 +63,11 @@ const createSendToken = (user, statusCode, res) => {
 // @access  Public
 const register = async (req, res) => {
     try {
-        const { name, email, password, passwordConfirm, phone } = req.body;
+        const { name, password, passwordConfirm, phone } = req.body;
+        const email = normalizeEmail(req.body.email);
         
         // Validation
-        if (!name || !email || !password || !passwordConfirm) {
+        if (typeof name !== 'string' || !validator.isEmail(email) || typeof password !== 'string' || typeof passwordConfirm !== 'string') {
             return res.status(400).json({
                 success: false,
                 error: 'Please provide all required fields'
@@ -115,10 +123,11 @@ const register = async (req, res) => {
 // @access  Public
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const email = normalizeEmail(req.body.email);
+        const { password } = req.body;
         
         // Check if email and password exist
-        if (!email || !password) {
+        if (!validator.isEmail(email) || typeof password !== 'string' || !password) {
             return res.status(400).json({
                 success: false,
                 error: 'Please provide email and password'
@@ -235,7 +244,9 @@ const updateProfile = async (req, res) => {
         });
         
         // If email is being updated, check if it's already taken
-        if (updates.email) {
+        if (updates.email !== undefined) {
+            updates.email = normalizeEmail(updates.email);
+            if (!validator.isEmail(updates.email)) return res.status(400).json({ success: false, error: 'Please provide a valid email' });
             const existingUser = await User.findOne({ 
                 email: updates.email,
                 _id: { $ne: req.user.id }
@@ -247,6 +258,7 @@ const updateProfile = async (req, res) => {
                     error: 'Email is already taken'
                 });
             }
+            updates.emailVerified = false;
         }
         
         // Update user
@@ -300,7 +312,7 @@ const changePassword = async (req, res) => {
         const { currentPassword, newPassword, newPasswordConfirm } = req.body;
         
         // Validation
-        if (!currentPassword || !newPassword || !newPasswordConfirm) {
+        if (![currentPassword, newPassword, newPasswordConfirm].every(value => typeof value === 'string' && value)) {
             return res.status(400).json({
                 success: false,
                 error: 'Please provide all password fields'
@@ -362,64 +374,31 @@ const changePassword = async (req, res) => {
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = async (req, res) => {
+    let user;
     try {
-        const { email } = req.body;
-        
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                error: 'Please provide your email'
-            });
+        const email = normalizeEmail(req.body.email);
+        if (!validator.isEmail(email)) return res.status(400).json({ success: false, error: 'Please provide a valid email' });
+        // Check before lookup so the response does not disclose account existence.
+        if (!emailService.isConfigured()) {
+            return res.status(503).json({ success: false, error: 'Password recovery is currently unavailable. Please contact support.' });
         }
-        
-        // Find user
-        const user = await User.findOne({ email });
-        
-        if (!user) {
-            // Don't reveal that user doesn't exist (security)
-            return res.status(200).json({
-                success: true,
-                message: 'If an account exists with this email, you will receive password reset instructions'
-            });
+        user = await User.findOne({ email, isActive: true });
+        if (user) {
+            const token = user.createPasswordResetToken();
+            await user.save({ validateBeforeSave: false });
+            await emailService.sendPasswordReset(email, token);
         }
-        
-        // Generate reset token
-        const resetToken = user.createPasswordResetToken();
-        await user.save({ validateBeforeSave: false });
-        
-        // In a real app, you would send an email here
-        // For now, we'll just return the token (in development only)
-        const resetURL = `${req.protocol}://${req.get('host')}/api/auth/reset-password/${resetToken}`;
-        
-        // Don't show URL in production
-        const message = process.env.NODE_ENV === 'development' 
-            ? `Password reset token: ${resetToken}\nReset URL: ${resetURL}`
-            : 'Password reset instructions sent to your email';
-        
-        res.status(200).json({
-            success: true,
-            message,
-            // Only include in development
-            ...(process.env.NODE_ENV === 'development' && { resetToken, resetURL })
-        });
-        
+        return res.status(200).json({ success: true, message: 'If an active account exists with this email, password reset instructions will arrive shortly.' });
     } catch (error) {
-        console.error('Forgot password error:', error);
-        
-        // Clear reset token if error
-        if (req.user) {
-            req.user.passwordResetToken = undefined;
-            req.user.passwordResetExpires = undefined;
-            await req.user.save({ validateBeforeSave: false });
+        if (user) {
+            user.passwordResetToken = undefined;
+            user.passwordResetExpires = undefined;
+            await user.save({ validateBeforeSave: false }).catch(() => {});
         }
-        
-        res.status(500).json({
-            success: false,
-            error: 'Server error'
-        });
+        console.error('Password recovery delivery failed:', error.message);
+        return res.status(503).json({ success: false, error: 'Password recovery is temporarily unavailable. Please try again later.' });
     }
 };
-
 // @desc    Reset password
 // @route   PATCH /api/auth/reset-password/:token
 // @access  Public
@@ -429,7 +408,7 @@ const resetPassword = async (req, res) => {
         const { password, passwordConfirm } = req.body;
         
         // Validation
-        if (!password || !passwordConfirm) {
+        if (![password, passwordConfirm].every(value => typeof value === 'string' && value)) {
             return res.status(400).json({
                 success: false,
                 error: 'Please provide password and confirmation'
@@ -455,7 +434,7 @@ const resetPassword = async (req, res) => {
             passwordResetExpires: { $gt: Date.now() }
         });
         
-        if (!user) {
+        if (!user || !user.isActive) {
             return res.status(400).json({
                 success: false,
                 error: 'Token is invalid or has expired'
@@ -498,7 +477,7 @@ const addAddress = async (req, res) => {
         const { type, street, city, state, zipCode, country, isDefault } = req.body;
         
         // Validation
-        if (!street || !city || !state || !zipCode) {
+        if (![street, city, state, zipCode].every(value => typeof value === 'string' && value.trim()) || (isDefault !== undefined && typeof isDefault !== 'boolean')) {
             return res.status(400).json({
                 success: false,
                 error: 'Please provide complete address'
@@ -515,14 +494,15 @@ const addAddress = async (req, res) => {
         }
         
         // Create new address
+        if (user.addresses.length >= 20) return res.status(400).json({ success: false, error: 'You can save up to 20 addresses' });
         const newAddress = {
             type: type || 'home',
             street,
             city,
             state,
             zipCode,
-            country: country || 'USA',
-            isDefault: isDefault || false
+            country: country || 'India',
+            isDefault: isDefault === true || user.addresses.length === 0
         };
         
         // If this is set as default, remove default from others
@@ -554,6 +534,42 @@ const addAddress = async (req, res) => {
 };
 
 // @desc    Get user orders
+const updateAddress = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const address = user?.addresses.id(req.params.addressId);
+        if (!address) return res.status(404).json({ success: false, error: 'Address not found' });
+        const fields = ['type', 'street', 'city', 'state', 'zipCode', 'country'];
+        for (const field of fields) {
+            if (req.body[field] !== undefined) {
+                if (typeof req.body[field] !== 'string' || !req.body[field].trim()) return res.status(400).json({ success: false, error: 'Please provide a complete address' });
+                address[field] = req.body[field].trim();
+            }
+        }
+        if (req.body.isDefault !== undefined && typeof req.body.isDefault !== 'boolean') return res.status(400).json({ success: false, error: 'isDefault must be boolean' });
+        if (req.body.isDefault === true) user.addresses.forEach(item => { item.isDefault = item === address; });
+        if (!user.addresses.some(item => item.isDefault)) user.addresses[0].isDefault = true;
+        await user.save();
+        return res.json({ success: true, data: { addresses: user.addresses } });
+    } catch (error) {
+        return res.status(error.name === 'ValidationError' ? 400 : 500).json({ success: false, error: 'Could not update address' });
+    }
+};
+
+const deleteAddress = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const address = user?.addresses.id(req.params.addressId);
+        if (!address) return res.status(404).json({ success: false, error: 'Address not found' });
+        address.deleteOne();
+        if (user.addresses.length && !user.addresses.some(item => item.isDefault)) user.addresses[0].isDefault = true;
+        await user.save();
+        return res.json({ success: true, data: { addresses: user.addresses } });
+    } catch {
+        return res.status(500).json({ success: false, error: 'Could not delete address' });
+    }
+};
+
 // @route   GET /api/auth/orders
 // @access  Private
 const getUserOrders = async (req, res) => {
@@ -564,16 +580,8 @@ const getUserOrders = async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
         
-        // Find all orders for this user by email
-        // Extremely robust search: check user ID and case-insensitive email
-        const emailRegex = new RegExp(`^${user.email.trim()}$`, 'i');
-        const orders = await Order.find({ 
-            $or: [
-                { user: user._id },
-                { 'customer.email': user.email },
-                { 'customer.email': emailRegex }
-            ]
-        })
+        // Ownership is permanent and must not change when an account changes email.
+        const orders = await Order.find({ user: user._id })
             .sort({ createdAt: -1 })
             .select('-__v')
             .lean();
@@ -585,6 +593,8 @@ const getUserOrders = async (req, res) => {
             totalAmount: order.totalAmount,
             status: order.status,
             paymentStatus: order.paymentStatus,
+            paymentMethod: order.paymentMethod,
+            refundRequired: order.refundRequired || false,
             createdAt: order.createdAt,
             items: order.items.map(item => ({
                 productId: item.productId,
@@ -596,7 +606,8 @@ const getUserOrders = async (req, res) => {
                 image: item.image
             })),
             shippingAddress: order.shippingAddress,
-            trackingNumber: order.trackingNumber || null,
+            trackingNumber: order.shippingAddress?.trackingNumber || null,
+            trackingUrl: order.shippingAddress?.trackingUrl || null,
             estimatedDelivery: order.estimatedDelivery || null
         }));
         
@@ -617,6 +628,9 @@ const getUserOrders = async (req, res) => {
 const addToWishlist = async (req, res) => {
     try {
         const { productId } = req.params;
+        if (!mongoose.isValidObjectId(productId) || !await Product.exists({ _id: productId, isActive: true })) {
+            return res.status(404).json({ success: false, error: 'Product not found' });
+        }
         const user = await User.findById(req.user.id);
         
         if (!user.wishlist.includes(productId)) {
@@ -705,7 +719,7 @@ const getSharedWishlist = async (req, res) => {
 const googleLogin = async (req, res) => {
     try {
         const { idToken } = req.body;
-        if (!idToken) {
+        if (typeof idToken !== 'string' || !idToken || idToken.length > 20000) {
             return res.status(400).json({ success: false, error: 'Token is required' });
         }
 
@@ -736,7 +750,11 @@ const googleLogin = async (req, res) => {
                 algorithms: ['RS256']
             });
 
-            email = tokenInfo.email;
+            if (tokenInfo.email_verified !== true || tokenInfo.firebase?.sign_in_provider !== 'google.com') {
+                return res.status(401).json({ success: false, error: 'A verified Google account is required' });
+            }
+
+            email = normalizeEmail(tokenInfo.email);
             name = tokenInfo.name || (email ? email.split('@')[0] : 'User');
             avatar = tokenInfo.picture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
             console.log('[GoogleLogin] Token verified for:', email);
@@ -768,6 +786,7 @@ const googleLogin = async (req, res) => {
             console.log('[GoogleLogin] Existing user logged in:', email);
         }
 
+        if (!user.isActive) return res.status(401).json({ success: false, error: 'Your account has been deactivated' });
         user.lastLogin = Date.now();
         await user.save({ validateBeforeSave: false });
 
@@ -789,6 +808,8 @@ module.exports = {
     forgotPassword,
     resetPassword,
     addAddress,
+    updateAddress,
+    deleteAddress,
     getUserOrders,
     addToWishlist,
     removeFromWishlist,

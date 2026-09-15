@@ -1,6 +1,7 @@
 // models/Order.js - Order Schema for MongoDB
 
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 // Define Order Item Schema (nested in Order)
 const orderItemSchema = new mongoose.Schema({
@@ -25,7 +26,8 @@ const orderItemSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: 1,
-        default: 1
+        default: 1,
+        validate: [Number.isInteger, 'Item quantity must be a whole number']
     },
     price: {
         type: Number,
@@ -54,6 +56,7 @@ const orderSchema = new mongoose.Schema({
         unique: true,
         required: true
     },
+    requestId: { type: String, maxlength: 100 },
     customer: {
         name: {
             type: String,
@@ -68,6 +71,7 @@ const orderSchema = new mongoose.Schema({
         },
         phone: {
             type: String,
+            required: [true, 'Customer phone number is required'],
             trim: true
         }
     },
@@ -104,7 +108,7 @@ const orderSchema = new mongoose.Schema({
         country: {
             type: String,
             required: true,
-            default: 'USA',
+            default: 'India',
             trim: true
         }
     },
@@ -116,7 +120,7 @@ const orderSchema = new mongoose.Schema({
     shippingFee: {
         type: Number,
         required: true,
-        default: 5.99,
+        default: 99,
         min: 0
     },
     tax: {
@@ -163,6 +167,12 @@ const orderSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    paymentCreationStartedAt: { type: Date, default: null },
+    inventoryManaged: { type: Boolean, default: false },
+    inventoryReleased: { type: Boolean, default: false },
+    inventoryReleasePending: { type: Boolean, default: false },
+    couponReservationManaged: { type: Boolean, default: false },
+    refundRequired: { type: Boolean, default: false },
     notes: {
         type: String,
         maxlength: [500, 'Notes cannot exceed 500 characters']
@@ -174,30 +184,19 @@ const orderSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Generate order number before saving
-// Generate order number BEFORE validation (works with insertMany)
+// Generate before validation for newly constructed/saved orders.
 orderSchema.pre('validate', async function () {
     if (!this.orderNumber) {
         const date = new Date();
         const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-        const randomNum = Math.floor(1000 + Math.random() * 9000);
-        this.orderNumber = `ORD-${dateStr}-${randomNum}`;
+        this.orderNumber = `ORD-${dateStr}-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
     }
 });
-// Generate tracking number when status changes to shipped
-orderSchema.pre('save', async function() {
-    // Generate tracking number when status becomes 'shipped'
-    if (this.isModified('status') && this.status === 'shipped' && !this.trackingNumber) {
-        const date = new Date();
-        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-        const randomNum = Math.floor(100000 + Math.random() * 900000);
-        this.trackingNumber = `TRK-${dateStr}-${randomNum}`;
-    }
-});
-
+// Tracking numbers must come from the carrier; a random local number is not trackable.
 
 // Create indexes
 orderSchema.index({ 'customer.email': 1 });
+orderSchema.index({ user: 1, requestId: 1 }, { unique: true, partialFilterExpression: { requestId: { $type: 'string' } } });
 orderSchema.index({ status: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'customer.name': 'text', 'customer.email': 'text' });
@@ -211,7 +210,7 @@ orderSchema.virtual('formattedTotal').get(function() {
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
-        maximumFractionDigits: 0
+        minimumFractionDigits: 0, maximumFractionDigits: 2
     }).format(this.totalAmount);
 });
 

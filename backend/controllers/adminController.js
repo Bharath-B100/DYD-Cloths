@@ -3,14 +3,19 @@
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const { transitionOrder } = require('../services/orderLifecycle');
+const { dateRange, pageNumber, escapeRegex } = require('../utils/validation');
+const mongoose = require('mongoose');
 
 const formatINR = (amount) => new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-    maximumFractionDigits: 0
+    minimumFractionDigits: 0, maximumFractionDigits: 2
 }).format(amount || 0);
 
 const normalizeProductData = (productData, files = {}) => {
+    const allowed = ['name', 'description', 'price', 'stock', 'mrp', 'sellingPrice', 'discountPercent', 'category', 'mainImage', 'imageUrls', 'images', 'sizes', 'colors', 'tags', 'features', 'productTypes', 'catalogTypes', 'isActive', 'isFeatured', 'fabric', 'weight'];
+    productData = Object.fromEntries(Object.entries(productData).filter(([key]) => allowed.includes(key)));
     if (files.thumbnail?.[0]) {
         productData.mainImage = files.thumbnail[0].path;
     } else if (files.image?.[0]) {
@@ -78,22 +83,22 @@ const getDashboardStats = async (req, res) => {
         ] = await Promise.all([
             Order.countDocuments(),
             Order.aggregate([
-                { $match: { paymentStatus: 'paid' } },
+                { $match: { paymentStatus: 'paid', status: { $ne: 'cancelled' } } },
                 { $group: { _id: null, total: { $sum: '$totalAmount' } } }
             ]),
             User.countDocuments({ role: 'customer' }),
             Product.countDocuments({ isActive: true }),
             Order.countDocuments({ createdAt: { $gte: startOfToday } }),
             Order.aggregate([
-                { $match: { paymentStatus: 'paid', createdAt: { $gte: startOfToday } } },
+                { $match: { paymentStatus: 'paid', status: { $ne: 'cancelled' }, createdAt: { $gte: startOfToday } } },
                 { $group: { _id: null, total: { $sum: '$totalAmount' } } }
             ]),
             Order.aggregate([
-                { $match: { paymentStatus: 'paid', createdAt: { $gte: startOfMonth } } },
+                { $match: { paymentStatus: 'paid', status: { $ne: 'cancelled' }, createdAt: { $gte: startOfMonth } } },
                 { $group: { _id: null, total: { $sum: '$totalAmount' } } }
             ]),
             Order.aggregate([
-                { $match: { paymentStatus: 'paid', createdAt: { $gte: startOfYear } } },
+                { $match: { paymentStatus: 'paid', status: { $ne: 'cancelled' }, createdAt: { $gte: startOfYear } } },
                 { $group: { _id: null, total: { $sum: '$totalAmount' } } }
             ]),
             Order.find().sort({ createdAt: -1 }).limit(10).select('orderNumber customer.name totalAmount status createdAt').lean(),
@@ -130,7 +135,7 @@ const getDashboardStats = async (req, res) => {
         
     } catch (error) {
         console.error('Get dashboard stats error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -143,8 +148,8 @@ const getDashboardStats = async (req, res) => {
 // @access  Private/Admin
 const getAllOrders = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        const page = pageNumber(req.query.page, 1);
+        const limit = pageNumber(req.query.limit, 20, 100);
         const skip = (page - 1) * limit;
         
         const filter = {};
@@ -152,17 +157,13 @@ const getAllOrders = async (req, res) => {
         if (req.query.status) filter.status = req.query.status;
         if (req.query.paymentStatus) filter.paymentStatus = req.query.paymentStatus;
         
-        if (req.query.startDate || req.query.endDate) {
-            filter.createdAt = {};
-            if (req.query.startDate) filter.createdAt.$gte = new Date(req.query.startDate);
-            if (req.query.endDate) filter.createdAt.$lte = new Date(req.query.endDate);
-        }
+        Object.assign(filter, dateRange(req.query.startDate, req.query.endDate));
         
         if (req.query.search) {
             filter.$or = [
-                { orderNumber: { $regex: req.query.search, $options: 'i' } },
-                { 'customer.name': { $regex: req.query.search, $options: 'i' } },
-                { 'customer.email': { $regex: req.query.search, $options: 'i' } }
+                { orderNumber: { $regex: escapeRegex(req.query.search), $options: 'i' } },
+                { 'customer.name': { $regex: escapeRegex(req.query.search), $options: 'i' } },
+                { 'customer.email': { $regex: escapeRegex(req.query.search), $options: 'i' } }
             ];
         }
         
@@ -190,7 +191,7 @@ const getAllOrders = async (req, res) => {
         
     } catch (error) {
         console.error('Get all orders error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -199,44 +200,15 @@ const getAllOrders = async (req, res) => {
 // @access  Private/Admin
 const updateOrderStatus = async (req, res) => {
     try {
-        const { status } = req.body;
-        const { id } = req.params;
-        
-        const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).json({ success: false, error: 'Invalid status' });
-        }
-        
-        const order = await Order.findByIdAndUpdate(id, { status, updatedAt: Date.now() }, { new: true, runValidators: true });
-        
-        if (!order) {
-            return res.status(404).json({ success: false, error: 'Order not found' });
-        }
-        
-        if (status === 'cancelled' && order.paymentStatus === 'paid') {
-            order.paymentStatus = 'refunded';
-            await order.save();
-            
-            for (const item of order.items) {
-                // Only update stock for real products (ObjectId format)
-                if (item.productId && !item.productId.startsWith('custom-') && !item.productId.startsWith('studio-')) {
-                    try {
-                        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.quantity } });
-                    } catch (error) {
-                        console.warn(`Could not restore stock for product ${item.productId}:`, error.message);
-                    }
-                }
-            }
-        }
-        
-        res.status(200).json({ success: true, message: `Order status updated to ${status}`, data: order });
-        
+        const order = await transitionOrder(req.params.id, req.body.status, {
+            trackingNumber: req.body.trackingNumber,
+            trackingUrl: req.body.trackingUrl
+        });
+        res.json({ success: true, message: `Order status updated to ${order.status}`, data: order });
     } catch (error) {
-        console.error('Update order status error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Could not update order' });
     }
 };
-
 // @desc    Update payment status
 // @route   PUT /api/admin/orders/:id/payment-status
 // @access  Private/Admin
@@ -250,17 +222,22 @@ const updatePaymentStatus = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid payment status' });
         }
         
-        const order = await Order.findByIdAndUpdate(id, { paymentStatus, updatedAt: Date.now() }, { new: true, runValidators: true });
+        const order = await Order.findById(id);
         
         if (!order) {
             return res.status(404).json({ success: false, error: 'Order not found' });
         }
+        if (order.paymentMethod !== 'cash_on_delivery' || paymentStatus !== 'paid' || order.status !== 'delivered') {
+            return res.status(400).json({ success: false, error: 'Only payment collected for a delivered COD order can be recorded manually. Online payments and refunds require gateway verification.' });
+        }
+        order.paymentStatus = 'paid';
+        await order.save();
         
         res.status(200).json({ success: true, message: `Payment status updated to ${paymentStatus}`, data: order });
         
     } catch (error) {
         console.error('Update payment status error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -271,22 +248,35 @@ const updatePaymentStatus = async (req, res) => {
 const deleteOrder = async (req, res) => {
     try {
         const { id } = req.params;
-        const order = await Order.findByIdAndDelete(id);
+        const order = await Order.findById(id);
         
         if (!order) {
             return res.status(404).json({ success: false, error: 'Order not found' });
         }
+        return res.status(409).json({ success: false, error: 'Orders are retained for customer history and payment reconciliation. Cancel an eligible order instead.' });
         
-        res.status(200).json({ success: true, message: 'Order deleted successfully' });
         
     } catch (error) {
         console.error('Delete order error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
 // PRODUCT MANAGEMENT
 // ======================
+const getAdminProducts = async (req, res) => {
+    try {
+        const page = pageNumber(req.query.page, 1);
+        const limit = pageNumber(req.query.limit, 100, 100);
+        const [products, total] = await Promise.all([
+            Product.find().sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+            Product.countDocuments()
+        ]);
+        res.json({ success: true, data: products, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    } catch {
+        res.status(500).json({ success: false, error: 'Could not load products' });
+    }
+};
 
 // @desc    Create new product
 // @route   POST /api/admin/products
@@ -310,7 +300,7 @@ const createProduct = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Product with this name already exists' });
         }
         
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -338,7 +328,7 @@ const updateProduct = async (req, res) => {
             return res.status(400).json({ success: false, error: messages.join(', ') });
         }
         
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -361,7 +351,7 @@ const deleteProduct = async (req, res) => {
         
     } catch (error) {
         console.error('Delete product error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -375,16 +365,20 @@ const bulkUpdateStock = async (req, res) => {
         if (!Array.isArray(updates) || updates.length === 0) {
             return res.status(400).json({ success: false, error: 'Please provide updates array' });
         }
+        if (updates.length > 100 || updates.some(update => !update || !mongoose.isValidObjectId(update.productId) || !Number.isInteger(update.stock) || update.stock < 0)) {
+            return res.status(400).json({ success: false, error: 'Each stock update needs a valid product and non-negative whole quantity (up to 100 products)' });
+        }
         
         const bulkOps = updates.map(update => ({
             updateOne: { filter: { _id: update.productId }, update: { $set: { stock: update.stock } } }
         }));
         
         const result = await Product.bulkWrite(bulkOps);
+        return res.json({ success: true, message: `Stock updated for ${result.modifiedCount} products`, data: result });
         
     } catch (error) {
         console.error('Bulk update stock error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -397,6 +391,9 @@ const bulkUpdatePricing = async (req, res) => {
         
         if (!Array.isArray(updates) || updates.length === 0) {
             return res.status(400).json({ success: false, error: 'Please provide updates array' });
+        }
+        if (updates.length > 100 || updates.some(update => !update || !mongoose.isValidObjectId(update.productId) || !Number.isFinite(update.sellingPrice) || update.sellingPrice < 0 || (update.price !== undefined && (!Number.isFinite(update.price) || update.price < 0)) || (update.mrp != null && (!Number.isFinite(update.mrp) || update.mrp < update.sellingPrice)) || (update.discountPercent !== undefined && (!Number.isFinite(update.discountPercent) || update.discountPercent < 0 || update.discountPercent > 100)))) {
+            return res.status(400).json({ success: false, error: 'Provide valid non-negative pricing, MRP at least the selling price, and discount from 0 to 100' });
         }
         
         const bulkOps = updates.map(u => ({
@@ -419,7 +416,7 @@ const bulkUpdatePricing = async (req, res) => {
         
     } catch (error) {
         console.error('Bulk update pricing error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -432,16 +429,16 @@ const bulkUpdatePricing = async (req, res) => {
 // @access  Private/Admin
 const getAllCustomers = async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        const page = pageNumber(req.query.page, 1);
+        const limit = pageNumber(req.query.limit, 20, 100);
         const skip = (page - 1) * limit;
         
         const filter = {};
         
         if (req.query.search) {
             filter.$or = [
-                { name: { $regex: req.query.search, $options: 'i' } },
-                { email: { $regex: req.query.search, $options: 'i' } }
+                { name: { $regex: escapeRegex(req.query.search), $options: 'i' } },
+                { email: { $regex: escapeRegex(req.query.search), $options: 'i' } }
             ];
         }
         
@@ -475,7 +472,7 @@ const getAllCustomers = async (req, res) => {
         
     } catch (error) {
         console.error('Get all customers error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -510,7 +507,7 @@ const getCustomerDetails = async (req, res) => {
         
     } catch (error) {
         console.error('Get customer details error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -526,21 +523,23 @@ const updateCustomerStatus = async (req, res) => {
             return res.status(400).json({ success: false, error: 'isActive must be boolean' });
         }
         
-        const customer = await User.findByIdAndUpdate(id, { isActive }, { new: true, runValidators: true }).select('-password');
+        const customer = await User.findById(id);
         
         if (!customer) {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
         
-        if (customer.email === 'admin@tshirtco.com' && !isActive) {
-            return res.status(403).json({ success: false, error: 'Cannot deactivate the primary administrator' });
+        if (!isActive && (customer.role === 'admin' || String(customer._id) === String(req.user._id))) {
+            return res.status(403).json({ success: false, error: 'Cannot deactivate an administrator or your own account' });
         }
+        customer.isActive = isActive;
+        await customer.save({ validateBeforeSave: false });
         
         res.status(200).json({ success: true, message: `User ${isActive ? 'activated' : 'deactivated'} successfully`, data: customer });
         
     } catch (error) {
         console.error('Update customer status error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -562,7 +561,7 @@ const updateUserRole = async (req, res) => {
         }
         
         // Protect the primary admin
-        if (targetUser.email === 'admin@tshirtco.com') {
+        if (targetUser.email === 'admin@tshirtco.com' || String(targetUser._id) === String(req.user._id)) {
             return res.status(403).json({ success: false, error: 'Cannot change the role of the primary administrator' });
         }
         
@@ -605,16 +604,17 @@ const deleteCustomer = async (req, res) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
         
-        if (customer.email === 'admin@tshirtco.com') {
+        if (customer.role === 'admin' || String(customer._id) === String(req.user._id)) {
             return res.status(403).json({ success: false, error: 'Cannot delete the primary administrator' });
         }
         
-        await User.findByIdAndDelete(id);
-        res.status(200).json({ success: true, message: 'User deleted successfully' });
+        customer.isActive = false;
+        await customer.save({ validateBeforeSave: false });
+        res.status(200).json({ success: true, message: 'Customer deactivated; order history has been retained' });
         
     } catch (error) {
         console.error('Delete customer error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -627,6 +627,7 @@ const deleteCustomer = async (req, res) => {
 const getSalesAnalytics = async (req, res) => {
     try {
         const { period = 'month', year = new Date().getFullYear() } = req.query;
+        if (!Number.isInteger(Number(year)) || Number(year) < 2000 || Number(year) > 2100) return res.status(400).json({ success: false, error: 'Invalid analytics year' });
         
         let matchStage = {};
         let groupStage = {};
@@ -636,21 +637,23 @@ const getSalesAnalytics = async (req, res) => {
             case 'day':
                 const last30Days = new Date();
                 last30Days.setDate(last30Days.getDate() - 30);
-                matchStage = { createdAt: { $gte: last30Days }, paymentStatus: { $ne: 'failed' } };
+                matchStage = { createdAt: { $gte: last30Days }, paymentStatus: 'paid', status: { $ne: 'cancelled' } };
                 groupStage = { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, date: { $first: '$createdAt' }, totalSales: { $sum: '$totalAmount' }, orderCount: { $sum: 1 }, avgOrderValue: { $avg: '$totalAmount' } };
                 sortStage = { _id: 1 };
                 break;
             case 'month':
-                matchStage = { createdAt: { $gte: new Date(`${year}-01-01`), $lte: new Date(`${year}-12-31`) }, paymentStatus: { $ne: 'failed' } };
+                const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
+                const endOfYear = new Date(`${year}-12-31T23:59:59.999Z`);
+                matchStage = { createdAt: { $gte: startOfYear, $lte: endOfYear }, paymentStatus: 'paid', status: { $ne: 'cancelled' } };
                 groupStage = { _id: { $month: '$createdAt' }, month: { $first: { $month: '$createdAt' } }, totalSales: { $sum: '$totalAmount' }, orderCount: { $sum: 1 }, avgOrderValue: { $avg: '$totalAmount' } };
                 sortStage = { _id: 1 };
                 break;
             case 'year':
                 const fiveYearsAgo = new Date();
                 fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-                matchStage = { createdAt: { $gte: fiveYearsAgo }, paymentStatus: { $ne: 'failed' } };
+                matchStage = { createdAt: { $gte: fiveYearsAgo }, paymentStatus: 'paid', status: { $ne: 'cancelled' } };
                 groupStage = { _id: { $year: '$createdAt' }, year: { $first: { $year: '$createdAt' } }, totalSales: { $sum: '$totalAmount' }, orderCount: { $sum: 1 }, avgOrderValue: { $avg: '$totalAmount' } };
-                sortStage = { year: 1 };
+                sortStage = { _id: 1 };
                 break;
             default:
                 return res.status(400).json({ success: false, error: 'Invalid period. Use day, month, or year' });
@@ -665,12 +668,12 @@ const getSalesAnalytics = async (req, res) => {
         
         res.status(200).json({
             success: true,
-            data: { period, year: period === 'month' ? year : null, salesData, summary: summary[0] || { totalRevenue: 0, totalOrders: 0, avgOrderValue: 0, maxOrder: 0, minOrder: 0 } }
+            data: { period, year: period === 'month' ? Number(year) : null, salesData, summary: summary[0] || { totalRevenue: 0, totalOrders: 0, avgOrderValue: 0, maxOrder: 0, minOrder: 0 } }
         });
         
     } catch (error) {
         console.error('Get sales analytics error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -680,13 +683,19 @@ const getSalesAnalytics = async (req, res) => {
 const getProductAnalytics = async (req, res) => {
     try {
         const topSelling = await Order.aggregate([
+            { $match: { paymentStatus: 'paid', status: { $ne: 'cancelled' } } },
             { $unwind: '$items' },
-            { $group: { _id: '$items.productId', productName: { $first: '$items.name' }, totalSold: { $sum: '$items.quantity' }, totalRevenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } } } },
+            { 
+                $group: { 
+                    _id: '$items.productId', 
+                    productName: { $first: '$items.name' }, 
+                    productImage: { $first: '$items.image' },
+                    totalSold: { $sum: '$items.quantity' }, 
+                    totalRevenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } } 
+                } 
+            },
             { $sort: { totalSold: -1 } },
-            { $limit: 10 },
-            { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
-            { $unwind: '$product' },
-            { $project: { productId: '$_id', productName: 1, productImage: '$product.mainImage', totalSold: 1, totalRevenue: 1, stock: '$product.stock' } }
+            { $limit: 10 }
         ]);
         
         const byCategory = await Product.aggregate([
@@ -702,7 +711,7 @@ const getProductAnalytics = async (req, res) => {
         
     } catch (error) {
         console.error('Get product analytics error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
@@ -720,12 +729,8 @@ const exportData = async (req, res) => {
         
         switch (type) {
             case 'orders':
-                const dateFilter = {};
-                if (startDate) dateFilter.$gte = new Date(startDate);
-                if (endDate) dateFilter.$lte = new Date(endDate);
-                if (startDate || endDate) dateFilter.createdAt = dateFilter;
-                
-                data = await Order.find(dateFilter).sort({ createdAt: -1 }).lean();
+                const dateFilter = dateRange(startDate, endDate);
+                                data = await Order.find(dateFilter).sort({ createdAt: -1 }).lean();
                 
                 const ordersCSV = data.map(order => ({
                     'Order Number': order.orderNumber,
@@ -778,11 +783,12 @@ const exportData = async (req, res) => {
         
     } catch (error) {
         console.error('Export data error:', error);
-        res.status(500).json({ success: false, error: 'Server error' });
+        res.status(error.statusCode || 500).json({ success: false, error: error.statusCode ? error.message : 'Server error' });
     }
 };
 
 module.exports = {
+    getAdminProducts,
     getDashboardStats,
     getAllOrders,
     updateOrderStatus,

@@ -1,7 +1,7 @@
 // scripts/seedData.js - Populate database with sample data (Updated with Users)
 
 const mongoose = require('mongoose');
-const Product = require('../models/product');
+const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const connectDB = require('../config/db');
@@ -264,7 +264,8 @@ async function seedDatabase() {
         console.log('🌱 Starting database seeding...');
         
         // Connect to database
-        await connectDB();
+        require('../utils/maintenance').requireDisposableDatabase();
+        if (!await connectDB()) throw new Error('Database unavailable');
         
         // Clear existing data
         console.log('🧹 Clearing existing data...');
@@ -380,12 +381,12 @@ async function seedDatabase() {
         
         console.log('\n👑 Admin Credentials:');
         console.log(`   Email: ngtbharath@gmail.com`);
-        console.log(`   Password: admin@123`);
+        console.log('   Demo accounts are for disposable local development only.');
         console.log(`   Role: admin`);
 
         
         console.log('\n🔗 MongoDB Compass Connection:');
-        console.log(`   Connect to: ${process.env.MONGODB_URI}`);
+        console.log('   Use MONGODB_URI from your local environment configuration.');
         
         console.log('\n🚀 API Endpoints:');
         console.log(`   Server: http://localhost:5000`);

@@ -75,7 +75,13 @@ const productSchema = new mongoose.Schema({
         type: Number,
         required: true,
         default: 100,
-        min: 0
+        min: 0,
+        validate: [Number.isInteger, 'Stock must be a whole number']
+    },
+    stockReservations: {
+        type: [{ _id: false, orderId: mongoose.Schema.Types.ObjectId, quantity: Number }],
+        default: [],
+        select: false
     },
     isActive: {
         type: Boolean,
@@ -108,8 +114,8 @@ productSchema.virtual('formattedPrice').get(function() {
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
-        maximumFractionDigits: 0
-    }).format(this.sellingPrice || this.price);
+        minimumFractionDigits: 0, maximumFractionDigits: 2
+    }).format(this.sellingPrice ?? this.price);
 });
 
 // Create Model from Schema

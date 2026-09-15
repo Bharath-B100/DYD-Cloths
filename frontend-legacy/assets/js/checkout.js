@@ -240,7 +240,7 @@ const Checkout = {
 
     validateStep1: () => {
         const form = document.getElementById('checkoutForm');
-        const required = ['firstName', 'lastName', 'email', 'address', 'city', 'zipCode'];
+        const required = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'zipCode'];
         
         for (let field of required) {
             const element = form.elements[field];
@@ -256,6 +256,14 @@ const Checkout = {
         if (!emailRegex.test(email)) {
             Utils.showToast('Please enter a valid email address', 'warning');
             form.elements['email'].focus();
+            return false;
+        }
+
+        const phone = form.elements['phone']?.value.trim();
+        const phoneRegex = /^[0-9+\s\-()]{7,15}$/;
+        if (!phone || !phoneRegex.test(phone)) {
+            Utils.showToast('Please enter a valid phone number', 'warning');
+            if (form.elements['phone']) form.elements['phone'].focus();
             return false;
         }
         

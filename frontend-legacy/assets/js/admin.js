@@ -1199,8 +1199,8 @@ const Admin = {
                             ctx.fillStyle = config.shirtColor || '#ffffff';
                             ctx.fillRect(0, 0, 2048, 2048);
 
-                            const frontLayers = config.frontLayers || (config.frontUpload ? [{ rawSrc: config.frontUpload, x: 0.5, y: 0.5, scale: 0.8, rotation: 0 }] : []);
-                            const backLayers = config.backLayers || (config.backUpload ? [{ rawSrc: config.backUpload, x: 0.5, y: 0.5, scale: 0.8, rotation: 0 }] : []);
+                            const frontLayers = config.frontLayers || (config.frontUpload ? [{ rawSrc: config.frontUpload, x: 0.30, y: 0.34, scale: 0.6, rotation: 0 }] : []);
+                            const backLayers = config.backLayers || (config.backUpload ? [{ rawSrc: config.backUpload, x: 0.73, y: 0.34, scale: 0.6, rotation: 0 }] : []);
 
                             const drawSide = async (layers, zone) => {
                                 if (!layers.length || !zone) return;

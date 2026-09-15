@@ -30,9 +30,6 @@ const aiRoutes = require('./routes/aiRoutes');
 // Create Express app
 const app = express();
 
-// Connect to MongoDB
-connectDB();
-
 // Middleware
 const configuredOrigins = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
@@ -43,14 +40,18 @@ const localDevelopmentOrigins = [
     'http://127.0.0.1:5000',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'https://dyd-cloths.onrender.com',
-    'http://dyd-cloths.onrender.com'
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:4173',
+    'http://127.0.0.1:4173',
+    'https://dyd-cloths.onrender.com'
 ];
 const allowedOrigins = process.env.NODE_ENV === 'production'
-    ? [...configuredOrigins, 'https://dyd-cloths.onrender.com', 'http://dyd-cloths.onrender.com']
+    ? [...configuredOrigins, 'https://dyd-cloths.onrender.com']
     : [...new Set([...configuredOrigins, ...localDevelopmentOrigins])];
 
 app.disable('x-powered-by');
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY));
 // The storefront currently uses trusted font/icon/image CDNs. Keep Helmet's
 // protective headers enabled without shipping a restrictive CSP that would
 // break those existing assets; introduce a nonce-based CSP during CDN cleanup.
@@ -61,15 +62,35 @@ app.use(helmet({
 }));
 app.use(cors({
     origin: (origin, callback) => {
-        // Dynamically allow all origins to prevent CORS blocks on custom domains and redirects
-        return callback(null, true);
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        const error = Object.assign(new Error('Origin is not allowed'), { status: 403 });
+        return callback(error);
     },
     credentials: true
 }));
 
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
 app.use(cookieParser());
+
+// Readiness endpoint for the Vite proxy, hosting platform, and deployment
+// checks. A running HTTP server is not considered ready until MongoDB is too.
+app.get('/api/health', (req, res) => {
+    const database = connectDB.getStatus();
+    const statusCode = database.connected ? 200 : 503;
+
+    res.status(statusCode).json({
+        success: database.connected,
+        status: database.connected ? 'ready' : 'degraded',
+        database
+    });
+});
+
+app.use('/api', (req, res, next) => {
+    if (process.env.NODE_ENV !== 'test' && !connectDB.getStatus().connected) {
+        return res.status(503).json({ success: false, error: 'The store database is unavailable. Please try again shortly.' });
+    }
+    next();
+});
 
 // Proxy Firebase Auth & Config requests to bypass third-party cookie blocking
 const proxyFirebase = (req, res) => {
@@ -78,7 +99,9 @@ const proxyFirebase = (req, res) => {
         method: req.method,
         headers: {
             ...req.headers,
-            host: 'tshirtbusiness-bac1a.firebaseapp.com' // rewrite host
+            host: 'tshirtbusiness-bac1a.firebaseapp.com', // rewrite host
+            cookie: '',
+            authorization: ''
         }
     }, (connectorResponse) => {
         res.writeHead(connectorResponse.statusCode, connectorResponse.headers);
@@ -96,8 +119,13 @@ const proxyFirebase = (req, res) => {
 app.all('/__/auth/*', proxyFirebase);
 app.all('/__/firebase/*', proxyFirebase);
 
-// Serve Static Files from frontend directory with CORS allowed
-app.use(express.static(path.join(__dirname, '../frontend'), {
+// Studio designs include front/back previews and original artwork as data URLs.
+app.use(['/api/orders', '/api/user/cart', '/api/ai/remove-bg'], express.json({ limit: '20mb' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+// Serve Static Files from frontend/dist directory with CORS allowed
+app.use(express.static(path.join(__dirname, '../frontend/dist'), {
     setHeaders: (res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
     }
@@ -105,17 +133,17 @@ app.use(express.static(path.join(__dirname, '../frontend'), {
 
 // Request logging middleware
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path.replace(/(reset-password\/).+/, '$1[redacted]')}`);
     next();
 });
 
 // Routes
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
     res.json({ 
         message: '🎽 T-Shirt Business API',
         status: 'active',
         version: '4.0.0',
-        database: 'MongoDB Connected',
+        database: connectDB.getStatus().state,
         authentication: 'JWT Enabled',
         admin: 'Admin Panel Available',
         endpoints: {
@@ -165,6 +193,10 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/auth/google-login', authLimiter);
+app.use('/api/subscribe', authLimiter);
+app.use('/api/ai', rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false }));
 
 // Add user routes
 app.use('/api/user', userRoutes);
@@ -182,6 +214,15 @@ app.use('/api/ai', aiRoutes);
 
 // SEO Routes (mounted at root)
 app.use('/', seoRoutes);
+
+// Catch-all route to serve React's index.html for client-side routing
+app.get('*', (req, res, next) => {
+    // If request is for an API endpoint or OAuth helpers, let it pass to 404 handler
+    if (req.path.startsWith('/api') || req.path.startsWith('/__')) {
+        return next();
+    }
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 // Error handling middleware
 app.use((req, res, next) => {
@@ -202,13 +243,25 @@ app.use((error, req, res, next) => {
     });
 });
 
-// Start server
+// Start only after the initial database attempt has completed. If MongoDB is
+// unavailable, keep the HTTP server available for diagnostics and report 503
+// from /api/health instead of silently presenting a healthy-looking API.
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`\n=========================================`);
-    console.log(`🚀 Server running in ${process.env.NODE_ENV} mode`);
-    console.log(`📡 Port: ${PORT}`);
-    console.log(`🌐 URL: http://localhost:${PORT}`);
-    console.log(`🗄️  Database: MongoDB`);
-    console.log(`=========================================\n`);
-});
+const startServer = async () => {
+    const connection = await connectDB();
+    if (!connection) {
+        console.warn('⚠️ Starting in degraded mode; MongoDB-backed endpoints will remain unavailable until the connection is restored.');
+    }
+
+    app.listen(PORT, () => {
+        console.log(`\n=========================================`);
+        console.log(`🚀 Server running in ${process.env.NODE_ENV} mode`);
+        console.log(`📡 Port: ${PORT}`);
+        console.log(`🌐 URL: http://localhost:${PORT}`);
+        console.log(`🗄️  Database: ${connection ? 'MongoDB connected' : 'unavailable (see /api/health)'}`);
+        console.log(`=========================================\n`);
+    });
+};
+
+if (require.main === module) startServer();
+module.exports = { app, startServer };

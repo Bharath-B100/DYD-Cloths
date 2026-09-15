@@ -42,7 +42,7 @@ const protect = async (req, res, next) => {
         }
         
         // 6. Check if user changed password after token was issued
-        if (currentUser.changedPasswordAfter(decoded.iat)) {
+        if (currentUser.changedPasswordAfter(decoded.iat) || (decoded.version || 0) !== (currentUser.sessionVersion || 0)) {
             return res.status(401).json({
                 success: false,
                 error: 'User recently changed password. Please log in again.'
@@ -115,7 +115,7 @@ const isLoggedIn = async (req, res, next) => {
             }
             
             // 3. Check if user changed password after token was issued
-            if (currentUser.changedPasswordAfter(decoded.iat)) {
+            if (!currentUser.isActive || currentUser.changedPasswordAfter(decoded.iat) || (decoded.version || 0) !== (currentUser.sessionVersion || 0)) {
                 return next();
             }
             

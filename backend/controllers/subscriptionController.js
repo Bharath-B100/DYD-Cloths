@@ -1,15 +1,17 @@
 // controllers/subscriptionController.js - Newsletter subscription
 
 const Subscription = require('../models/Subscription');
+const validator = require('validator');
 
 // @desc    Subscribe to newsletter
 // @route   POST /api/subscribe
 // @access  Public
 const subscribe = async (req, res) => {
     try {
-        const { email, name, source = 'footer' } = req.body;
+        const { name, source = 'footer' } = req.body;
+        const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
         
-        if (!email) {
+        if (!validator.isEmail(email)) {
             return res.status(400).json({
                 success: false,
                 error: 'Email is required'
@@ -50,7 +52,7 @@ const subscribe = async (req, res) => {
         
         res.status(201).json({
             success: true,
-            message: 'Thank you for subscribing! Check your inbox for updates.'
+            message: 'Thank you for subscribing. Your email has been added to our newsletter list.'
         });
         
     } catch (error) {
@@ -75,9 +77,9 @@ const subscribe = async (req, res) => {
 // @access  Public
 const unsubscribe = async (req, res) => {
     try {
-        const { email } = req.body;
+        const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
         
-        if (!email) {
+        if (!validator.isEmail(email)) {
             return res.status(400).json({
                 success: false,
                 error: 'Email is required'
@@ -87,9 +89,9 @@ const unsubscribe = async (req, res) => {
         const subscription = await Subscription.findOne({ email: email.toLowerCase() });
         
         if (!subscription) {
-            return res.status(404).json({
-                success: false,
-                error: 'Email not found'
+            return res.status(200).json({
+                success: true,
+                message: 'You have been unsubscribed successfully'
             });
         }
         

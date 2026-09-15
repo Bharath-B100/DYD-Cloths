@@ -17,11 +17,13 @@ const reviewSchema = new mongoose.Schema({
         type: Number,
         min: 1,
         max: 5,
+        validate: [Number.isInteger, 'Rating must be a whole number'],
         required: [true, 'Review must have a rating.']
     },
     comment: {
         type: String,
         required: [true, 'Review must have a comment.'],
+        trim: true,
         maxlength: [1000, 'Comment cannot exceed 1000 characters']
     },
     images: [{
@@ -67,8 +69,6 @@ reviewSchema.statics.calcAverageRatings = async function(productId) {
             }
         ]);
         
-        console.log('Average ratings stats:', stats);
-
         if (stats.length > 0) {
             await mongoose.model('Product').findByIdAndUpdate(productId, {
                 reviewsCount: stats[0].nRating,
@@ -86,13 +86,19 @@ reviewSchema.statics.calcAverageRatings = async function(productId) {
 };
 
 // Call calcAverageRatings after saving a review
-reviewSchema.post('save', function() {
-    this.constructor.calcAverageRatings(this.product);
+reviewSchema.post('save', async function() {
+    await this.constructor.calcAverageRatings(this.product);
+});
+
+reviewSchema.post('deleteOne', { document: true, query: false }, async function() {
+    await this.constructor.calcAverageRatings(this.product);
 });
 
 // Call calcAverageRatings before updating/deleting a review
 // Note: findByIdAndUpdate/Delete are shorthands for findOneAnd...
 reviewSchema.pre(/^findOneAnd/, async function() {
+    const update = this.getUpdate();
+    if (update && update.$inc?.helpful !== undefined) return;
     // Store the review on the query object to access it in the post middleware
     this.r = await this.clone().findOne();
 });

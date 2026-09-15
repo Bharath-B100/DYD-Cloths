@@ -76,7 +76,7 @@ phone: {
         zipCode: String,
         country: {
             type: String,
-            default: 'USA'
+            default: 'India'
         },
         isDefault: {
             type: Boolean,
@@ -97,8 +97,9 @@ phone: {
     },
     lastLogin: Date,
     passwordChangedAt: Date,
-    passwordResetToken: String,
-    passwordResetExpires: Date,
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
+    sessionVersion: { type: Number, default: 0 },
     wishlist: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Product'
@@ -133,6 +134,10 @@ userSchema.pre('save', async function () {
 
     this.password = await bcrypt.hash(this.password, 12);
     this.passwordConfirm = undefined; // VERY IMPORTANT
+    if (!this.isNew) {
+        this.passwordChangedAt = new Date();
+        this.sessionVersion = (this.sessionVersion || 0) + 1;
+    }
 });
 
 

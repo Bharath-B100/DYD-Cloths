@@ -14,6 +14,7 @@ const {
     
     // Products
     createProduct,
+    getAdminProducts,
     updateProduct,
     deleteProduct,
     bulkUpdateStock,
@@ -67,6 +68,7 @@ const productUpload = upload.fields([
 ]);
 
 router.post('/products', productUpload, createProduct);
+router.get('/products', getAdminProducts);
 router.put('/products/bulk/stock', bulkUpdateStock);
 router.put('/products/bulk/pricing', bulkUpdatePricing);
 router.put('/products/:id', productUpload, updateProduct);

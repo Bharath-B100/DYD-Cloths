@@ -12,6 +12,8 @@ const {
     forgotPassword,
     resetPassword,
     addAddress,
+    updateAddress,
+    deleteAddress,
     getUserOrders,
     addToWishlist,
     removeFromWishlist,
@@ -30,11 +32,14 @@ router.patch('/reset-password/:token', resetPassword);
 router.get('/wishlist/share/:userId', getSharedWishlist);
 
 // Protected routes (require authentication)
-router.get('/logout', protect, logout);
+router.post('/logout', logout);
+router.get('/logout', logout);
 router.get('/me', protect, getMe);
 router.put('/update-profile', protect, updateProfile);
 router.put('/change-password', protect, changePassword);
 router.post('/addresses', protect, addAddress);
+router.put('/addresses/:addressId', protect, updateAddress);
+router.delete('/addresses/:addressId', protect, deleteAddress);
 router.get('/orders', protect, getUserOrders);
 
 // Wishlist routes

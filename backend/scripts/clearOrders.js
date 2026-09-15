@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 
 async function clearOrders() {
     try {
+        require('../utils/maintenance').requireDisposableDatabase();
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('Connected to MongoDB');
         const result = await Order.deleteMany({});

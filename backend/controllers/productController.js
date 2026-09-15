@@ -1,11 +1,16 @@
 // controllers/productController.js - Updated for MongoDB
 
 const Product = require('../models/Product');
+const { requiredText, fail } = require('../services/checkout');
+
+const productFields = ['name', 'description', 'price', 'mrp', 'discountPercent', 'sellingPrice', 'category',
+    'productTypes', 'catalogTypes', 'sizes', 'colors', 'images', 'features', 'mainImage', 'stock', 'isActive', 'tags'];
+const productInput = body => Object.fromEntries(productFields.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
 
 const formatINR = (amount) => new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-    maximumFractionDigits: 0
+    minimumFractionDigits: 0, maximumFractionDigits: 2
 }).format(amount || 0);
 
 // @desc    Get all products
@@ -14,8 +19,8 @@ const formatINR = (amount) => new Intl.NumberFormat('en-IN', {
 const getProducts = async (req, res) => {
     try {
         // Parse query parameters
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 100;
+        const page = Math.max(1, Math.min(100000, parseInt(req.query.page, 10) || 1));
+        const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 100));
         const skip = (page - 1) * limit;
         
         // Build query
@@ -23,27 +28,33 @@ const getProducts = async (req, res) => {
         
         // Filter by category
         if (req.query.category) {
-            query.category = req.query.category;
+            query.category = requiredText(req.query.category, 'Category', 80);
         }
 
         if (req.query.type) {
-            query.productTypes = req.query.type;
+            query.productTypes = requiredText(req.query.type, 'Product type', 80);
         }
 
         if (req.query.catalog) {
-            query.catalogTypes = req.query.catalog;
+            query.catalogTypes = requiredText(req.query.catalog, 'Catalog', 80);
         }
         
         // Filter by price range
-        if (req.query.minPrice || req.query.maxPrice) {
-            query.price = {};
-            if (req.query.minPrice) query.price.$gte = parseFloat(req.query.minPrice);
-            if (req.query.maxPrice) query.price.$lte = parseFloat(req.query.maxPrice);
+        if (req.query.minPrice !== undefined || req.query.maxPrice !== undefined) {
+            const comparisons = [];
+            for (const [field, operator] of [['minPrice', '$gte'], ['maxPrice', '$lte']]) {
+                if (req.query[field] !== undefined) {
+                    const value = Number(requiredText(req.query[field], field, 30));
+                    if (!Number.isFinite(value) || value < 0) throw fail('Price filters must be non-negative numbers.');
+                    comparisons.push({ [operator]: [{ $ifNull: ['$sellingPrice', '$price'] }, value] });
+                }
+            }
+            query.$expr = { $and: comparisons };
         }
         
         // Search by keyword
         if (req.query.search) {
-            query.$text = { $search: req.query.search };
+            query.$text = { $search: requiredText(req.query.search, 'Search', 200) };
         }
         
         // Get total count for pagination
@@ -68,15 +79,15 @@ const getProducts = async (req, res) => {
             currentPage: page,
             data: products.map(product => ({
                 ...product,
-                formattedPrice: formatINR(product.sellingPrice || product.price)
+                formattedPrice: formatINR(product.sellingPrice ?? product.price)
             }))
         });
         
     } catch (error) {
         console.error('Get products error:', error);
-        res.status(500).json({
+        res.status(error.statusCode || 500).json({
             success: false,
-            error: 'Server Error'
+            error: error.statusCode ? error.message : 'Server Error'
         });
     }
 };
@@ -109,7 +120,7 @@ const getProductById = async (req, res) => {
             success: true,
             data: {
                 ...product,
-                formattedPrice: formatINR(product.sellingPrice || product.price),
+                formattedPrice: formatINR(product.sellingPrice ?? product.price),
                 inStock: product.stock > 0
             }
         });
@@ -136,7 +147,7 @@ const getProductById = async (req, res) => {
 // @access  Private/Admin
 const createProduct = async (req, res) => {
     try {
-        const product = await Product.create(req.body);
+        const product = await Product.create(productInput(req.body));
         
         res.status(201).json({
             success: true,
@@ -169,7 +180,7 @@ const updateProduct = async (req, res) => {
     try {
         const product = await Product.findByIdAndUpdate(
             req.params.id,
-            req.body,
+            { $set: productInput(req.body) },
             {
                 new: true,
                 runValidators: true
@@ -243,7 +254,7 @@ const deleteProduct = async (req, res) => {
 // @access  Public
 const getCategories = async (req, res) => {
     try {
-        const categories = await Product.distinct('category');
+        const categories = await Product.distinct('category', { isActive: true });
         
         res.json({
             success: true,

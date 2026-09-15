@@ -1,6 +1,7 @@
 // controllers/searchController.js - Advanced search functionality
 
 const Product = require('../models/Product');
+const { escapeRegex, pageNumber } = require('../utils/validation');
 
 // @desc    Search products with autocomplete
 // @route   GET /api/search
@@ -9,7 +10,7 @@ const searchProducts = async (req, res) => {
     try {
         const { q, limit = 10, category, minPrice, maxPrice, sort } = req.query;
         
-        if (!q || q.length < 2) {
+        if (typeof q !== 'string' || q.trim().length < 2 || q.length > 100) {
             return res.status(400).json({
                 success: false,
                 error: 'Search query must be at least 2 characters'
@@ -20,10 +21,10 @@ const searchProducts = async (req, res) => {
         let query = {
             isActive: true,
             $or: [
-                { name: { $regex: q, $options: 'i' } },
-                { description: { $regex: q, $options: 'i' } },
-                { category: { $regex: q, $options: 'i' } },
-                { tags: { $in: [new RegExp(q, 'i')] } }
+                { name: { $regex: escapeRegex(q), $options: 'i' } },
+                { description: { $regex: escapeRegex(q), $options: 'i' } },
+                { category: { $regex: escapeRegex(q), $options: 'i' } },
+                { tags: { $in: [new RegExp(escapeRegex(q), 'i')] } }
             ]
         };
         
@@ -56,7 +57,7 @@ const searchProducts = async (req, res) => {
         
         const products = await Product.find(query)
             .sort(sortOption)
-            .limit(parseInt(limit))
+            .limit(pageNumber(limit, 10, 50))
             .lean();
         
         // Get total count
@@ -87,7 +88,7 @@ const getSuggestions = async (req, res) => {
     try {
         const { q, limit = 5 } = req.query;
         
-        if (!q || q.length < 1) {
+        if (typeof q !== 'string' || !q.trim() || q.length > 100) {
             return res.status(400).json({
                 success: false,
                 error: 'Query required'
@@ -97,22 +98,23 @@ const getSuggestions = async (req, res) => {
         // Get product name suggestions
         const products = await Product.find({
             isActive: true,
-            name: { $regex: q, $options: 'i' }
+            name: { $regex: escapeRegex(q), $options: 'i' }
         })
-        .limit(parseInt(limit))
+        .limit(pageNumber(limit, 5, 20))
         .select('name category mainImage')
         .lean();
         
         // Get category suggestions
         const categories = await Product.distinct('category', {
-            category: { $regex: q, $options: 'i' }
+            isActive: true,
+            category: { $regex: escapeRegex(q), $options: 'i' }
         });
         
         res.status(200).json({
             success: true,
             data: {
                 products,
-                categories: categories.slice(0, parseInt(limit))
+                categories: categories.slice(0, pageNumber(limit, 5, 20))
             }
         });
         

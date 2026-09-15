@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: dyd-cloths
+    runtime: node
+    buildCommand: npm ci --prefix backend && npm ci --prefix frontend --include=dev && npm run build --prefix frontend
+    startCommand: npm start --prefix backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: PUBLIC_SITE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false

@@ -3,29 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - DYD-Clothes</title>
-    <link rel="icon" type="image/png" href="images/LOGO_DYD.png">
-    <link rel="stylesheet" href="assets/css/main.css">
-    <link rel="stylesheet" href="assets/css/checkout.css">
+    <title>Checkout - DYD Clothes</title>
+    
+    <!-- Google Fonts & Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- App CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/checkout.css">
 </head>
-<body class="checkout-page">
-    <nav class="navbar">
+<body>
+    <nav class="navbar nav-glass">
         <div class="nav-container">
             <a href="index.html" class="logo">
-                <img src="images/LOGO_DYD.png" class="logo-icon" style="height:40px; width:auto; border-radius:4px; object-fit:contain;">
-                <span class="site-name">D<span style="color: var(--primary)">Y</span>D-Clothes</span><br><small class="site-tagline" style="font-size: 0.6em; opacity: 0.7; display: block; margin-top: -5px;">Design your Dream Clothes</small>
+                <i class="fas fa-tshirt"></i> DYD<span>Clothes</span>
             </a>
-            <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="shop.html">Shop</a></li>
-                <li><a href="studio.html">Design Studio</a></li>
-            </ul>
-            <div class="nav-right">
-                <div class="cart-icon" id="cartIcon">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span class="cart-count">0</span>
-                </div>
+            <div class="checkout-secure-badge">
+                <i class="fas fa-shield-alt"></i> Secure Checkout
             </div>
         </div>
     </nav>
@@ -66,8 +63,8 @@
                         <input type="email" name="email" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="tel" name="phone" class="form-control">
+                        <label class="required">Phone Number</label>
+                        <input type="tel" name="phone" class="form-control" required placeholder="+91 98765 43210">
                     </div>
                     <div class="form-group">
                         <label class="required">Street Address</label>
@@ -111,10 +108,10 @@
                                     <strong>Pay Online</strong>
                                     <small>Cards, UPI, Net Banking, Wallets</small>
                                 </div>
-                                <span class="payment-badge"><i class="fas fa-clock"></i> Coming soon</span>
                             </div>
                         </div>
-                        <div class="payment-method selected" data-method="cod" id="pmCOD">
+
+                        <div class="payment-method selected" data-method="cod" id="pmCod">
                             <div class="payment-method-inner">
                                 <i class="fas fa-money-bill-wave payment-icon cod"></i>
                                 <div>
@@ -125,70 +122,79 @@
                         </div>
                     </div>
 
-                    <!-- Online payments are intentionally disabled until the gateway rollout. -->
-                    <div class="razorpay-notice" id="razorpayNotice">
-                        <i class="fas fa-info-circle"></i>
-                        Online payments are coming soon. Please select Cash on Delivery to complete your order today.
-                    </div>
-                    
-                    <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">
-                        <button type="button" class="btn btn-outline prev-step" data-prev="1">Back</button>
+                    <!-- Online payments notice -->
+                    <p class="payment-notice" style="margin-top: 12px; font-size: 0.85rem; color: var(--text-muted);">
+                        <i class="fas fa-info-circle"></i> Online payment methods are currently being integrated. Cash on Delivery is active.
+                    </p>
+
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline prev-step">Back</button>
                         <button type="button" class="btn btn-primary next-step" data-next="3">Review Order</button>
                     </div>
                 </div>
 
                 <!-- Review Section -->
                 <div class="checkout-section" id="reviewSection" style="display: none;">
-                    <h3><i class="fas fa-check-circle"></i> Review Your Order</h3>
-                    <div class="order-review-details" id="orderReviewDetails">
-                        <p>Please review your shipping and payment details before placing the order.</p>
-                        <!-- Summary info will be injected by JS -->
+                    <h3><i class="fas fa-clipboard-check"></i> Order Review</h3>
+                    <div class="review-grid">
+                        <div class="review-box">
+                            <h4>Shipping To</h4>
+                            <div id="reviewShipping"></div>
+                        </div>
+                        <div class="review-box">
+                            <h4>Payment Method</h4>
+                            <div id="reviewPayment"></div>
+                        </div>
                     </div>
-                    <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px;">
-                        <button type="button" class="btn btn-outline prev-step" data-prev="2">Back</button>
-                        <button type="submit" class="btn btn-primary btn-full">Place Order</button>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label>Order Notes (Optional)</label>
+                        <textarea name="notes" class="form-control" rows="3" placeholder="Special instructions for delivery..."></textarea>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline prev-step">Back</button>
+                        <button type="submit" class="btn btn-accent btn-full" id="placeOrderBtn">
+                            <i class="fas fa-lock"></i> Place Order
+                        </button>
                     </div>
                 </div>
             </form>
         </main>
 
-        <aside class="order-summary-sidebar">
-            <div class="summary-header">
+        <!-- Order Summary Sidebar -->
+        <aside class="checkout-sidebar">
+            <div class="summary-card glass-card">
                 <h3>Order Summary</h3>
-            </div>
-            <div class="order-items" id="summaryItems">
-                <!-- Items will be loaded by JS -->
-            </div>
-            <div class="order-totals">
-                <div class="total-row">
+                <div class="checkout-items" id="checkoutItems"></div>
+                
+                <div class="summary-divider"></div>
+                
+                <div class="summary-row">
                     <span>Subtotal</span>
-                    <span id="summarySubtotal">₹0</span>
+                    <span id="subtotalAmount">₹0.00</span>
                 </div>
-                <div class="total-row">
+                <div class="summary-row" id="discountRow" style="display: none;">
+                    <span>Discount</span>
+                    <span id="discountAmount" class="discount-value">-₹0.00</span>
+                </div>
+                <div class="summary-row">
                     <span>Shipping</span>
-                    <span id="summaryShipping">₹0</span>
+                    <span id="shippingAmount">₹0.00</span>
                 </div>
-                <div class="total-row final">
+                <div class="summary-row total">
                     <span>Total</span>
-                    <span id="summaryTotal">₹0</span>
-                </div>
-            </div>
-            <div class="security-badge">
-                <i class="fas fa-shield-alt"></i>
-                <div>
-                    <p><strong>Secure Checkout</strong></p>
-                    <p style="font-size: 0.75rem;">Your data is encrypted and secure</p>
+                    <span id="totalAmount">₹0.00</span>
                 </div>
             </div>
         </aside>
     </div>
+
+    <!-- Scripts -->
+    <script src="assets/js/core/config.js"></script>
     <script src="assets/js/core/utils.js"></script>
     <script src="assets/js/core/api.js"></script>
     <script src="assets/js/core/auth.js"></script>
-    <script src="assets/js/core/cart.js"></script>
-    <script src="assets/js/main.js"></script>
     <script src="assets/js/checkout.js"></script>
-    <script src="assets/js/search.js"></script>
 </body>
 </html>
-

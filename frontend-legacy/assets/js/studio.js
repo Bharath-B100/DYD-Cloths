@@ -206,14 +206,14 @@ const Studio3D = {
         const posXVal = document.getElementById('designPosXValue');
         if (posXSlider) { 
             posXSlider.value = Math.round(layer.x * 100); 
-            if (posXVal) posXVal.textContent = Math.round(layer.x * 100) + 'px'; 
+            if (posXVal) posXVal.textContent = Math.round(layer.x * 100) + '%'; 
         }
         
         const posYSlider = document.getElementById('designPosY');
         const posYVal = document.getElementById('designPosYValue');
         if (posYSlider) { 
             posYSlider.value = Math.round(layer.y * 100); 
-            if (posYVal) posYVal.textContent = Math.round(layer.y * 100) + 'px'; 
+            if (posYVal) posYVal.textContent = Math.round(layer.y * 100) + '%'; 
         }
         
         const rotSlider = document.getElementById('designRot');
@@ -251,14 +251,15 @@ const Studio3D = {
         const count = layers.length;
         const offset = (count * 0.04) % 0.25;
 
+        const isBack = Studio3D.currentSide === 'back';
         const newLayer = {
             id: 'layer_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
             name: name,
             type: type,
             img: img,
             rawSrc: rawSrc || (img ? img.src : null),
-            x: 0.3,
-            y: 0.3,
+            x: isBack ? 0.73 : 0.30,
+            y: 0.34,
             scale: 0.6,
             rotation: 0
         };
@@ -765,8 +766,8 @@ const Studio3D = {
         };
         
         setupSlider('designScale', 'scale', 0.01, '%');
-        setupSlider('designPosX', 'x', 0.01, 'px');
-        setupSlider('designPosY', 'y', 0.01, 'px');
+        setupSlider('designPosX', 'x', 0.01, '%');
+        setupSlider('designPosY', 'y', 0.01, '%');
         setupSlider('designRot', 'rotation', 1, '°');
 
         // Add Text logic

@@ -8,7 +8,7 @@ exports.generateDesign = async (req, res) => {
     try {
         const { prompt } = req.body;
         
-        if (!prompt) {
+        if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 1000) {
             return res.status(400).json({ success: false, message: 'Please provide a prompt' });
         }
 
@@ -41,25 +41,27 @@ exports.removeBackground = async (req, res) => {
     try {
         const { imageUrl } = req.body; // Can accept URL or base64. For simplicity, we accept URL here.
         
-        if (!imageUrl) {
+        if (typeof imageUrl !== 'string' || !imageUrl) {
             return res.status(400).json({ success: false, message: 'Please provide an image URL' });
         }
 
         const apiKey = process.env.REMOVE_BG_API_KEY;
         
         if (!apiKey || apiKey === 'YOUR_REMOVE_BG_API_KEY') {
-            console.log('No RemoveBG API key provided. Returning original image for testing.');
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            return res.status(200).json({
-                success: true,
-                url: imageUrl // Fallback to original image if no key
-            });
+            return res.status(503).json({ success: false, message: 'Background removal is currently unavailable. You can upload a transparent PNG instead.' });
         }
 
         const formData = new FormData();
-        formData.append('image_url', imageUrl);
+        const dataImage = imageUrl.match(/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/);
+        if (dataImage) {
+            const buffer = Buffer.from(dataImage[2], 'base64');
+            if (buffer.length > 5 * 1024 * 1024) return res.status(400).json({ success: false, message: 'Image must be smaller than 5 MB' });
+            formData.append('image_file', buffer, { filename: `artwork.${dataImage[1]}`, contentType: `image/${dataImage[1]}` });
+        } else if (/^https:\/\//i.test(imageUrl)) {
+            formData.append('image_url', imageUrl);
+        } else {
+            return res.status(400).json({ success: false, message: 'Use a PNG, JPEG, WebP image or HTTPS image URL' });
+        }
         formData.append('size', 'auto');
 
         const response = await axios.post('https://api.remove.bg/v1.0/removebg', formData, {
@@ -67,7 +69,9 @@ exports.removeBackground = async (req, res) => {
                 ...formData.getHeaders(),
                 'X-Api-Key': apiKey
             },
-            responseType: 'arraybuffer'
+            responseType: 'arraybuffer',
+            timeout: 30000,
+            maxContentLength: 10 * 1024 * 1024
         });
 
         // Convert arraybuffer to base64
