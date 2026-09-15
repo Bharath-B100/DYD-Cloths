@@ -244,6 +244,7 @@ app.use((error, req, res, next) => {
 // from /api/health instead of silently presenting a healthy-looking API.
 const PORT = process.env.PORT || 5000;
 const startServer = async () => {
+    require('./scripts/ensureFrontend');
     const connection = await connectDB();
     if (!connection) {
         console.warn('⚠️ Starting in degraded mode; MongoDB-backed endpoints will remain unavailable until the connection is restored.');

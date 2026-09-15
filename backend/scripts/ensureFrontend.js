@@ -7,11 +7,12 @@ const { spawnSync } = require('node:child_process');
 const frontend = path.resolve(__dirname, '../../frontend');
 if (!fs.existsSync(path.join(frontend, 'dist/index.html'))) {
     const npmCli = process.env.npm_execpath;
-    if (!npmCli) throw new Error('Start through npm start so the frontend can be built.');
     for (const args of [['ci', '--include=dev'], ['run', 'build']]) {
-        const result = spawnSync(process.execPath, [npmCli, ...args], {
+        const command = npmCli ? process.execPath : (process.platform === 'win32' ? 'npm.cmd' : 'npm');
+        const result = spawnSync(command, npmCli ? [npmCli, ...args] : args, {
             cwd: frontend,
             stdio: 'inherit',
+            shell: !npmCli && process.platform === 'win32',
             env: process.env
         });
         if (result.error) throw result.error;
