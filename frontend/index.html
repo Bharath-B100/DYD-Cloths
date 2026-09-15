@@ -8,8 +8,42 @@
     <!-- Prefetch 3D Model -->
     <link rel="prefetch" href="/assets/oversized_t-shirt.glb" as="fetch" />
   </head>
+  <style>
+    #pre-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a0a;
+      transition: opacity 0.5s ease;
+    }
+    #pre-splash.hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+    @keyframes _blink {
+      0%,100% { opacity:1;   transform:scale(1); }
+      40%      { opacity:0.1; transform:scale(0.92); }
+      60%      { opacity:1;   transform:scale(1.04); }
+    }
+    @keyframes _glow {
+      0%,100% { filter:drop-shadow(0 0 8px rgba(244,180,0,0.3)); }
+      50%      { filter:drop-shadow(0 0 32px rgba(244,180,0,0.85)); }
+    }
+    #pre-splash img {
+      width: clamp(120px, 22vw, 220px);
+      animation: _blink 0.85s ease-in-out infinite, _glow 0.85s ease-in-out infinite;
+      will-change: opacity, transform, filter;
+    }
+  </style>
   <body>
-    <div id="root"><p role="status">Loading store…</p></div>
+    <!-- Pre-React splash: visible from 0ms. React SplashScreen hides this on mount. -->
+    <div id="pre-splash">
+      <img src="/images/LOGO_DYD.png" alt="Loading DYD Clothes" />
+    </div>
+    <div id="root"></div>
     <noscript>Please enable JavaScript to use the store.</noscript>
     <script type="module" src="/src/bootstrap.js"></script>
   </body>
