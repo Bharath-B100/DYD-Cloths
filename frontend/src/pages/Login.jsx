@@ -43,11 +43,16 @@ const Login = () => {
     const handleGoogleLogin = async () => {
         setRedirecting(true);
         try {
-            console.log('Initiating Google OAuth single page redirect...');
             await loginWithGoogleRedirect();
+            if (window.Utils?.showToast) window.Utils.showToast('Signed in with Google!', 'success');
+            navigate(destination, { replace: true });
         } catch (err) {
-            console.error('Google redirect failed:', err);
-            if (window.Utils?.showToast) window.Utils.showToast('Google Sign-In failed', 'error');
+            console.error('Google sign-in failed:', err);
+            const msg = err.code === 'auth/popup-closed-by-user'
+                ? 'Sign-in cancelled'
+                : err.message || 'Google Sign-In failed';
+            if (window.Utils?.showToast) window.Utils.showToast(msg, 'error');
+        } finally {
             setRedirecting(false);
         }
     };

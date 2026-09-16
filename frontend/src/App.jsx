@@ -63,8 +63,9 @@ function AppContent() {
     const [cartOpen, setCartOpen] = React.useState(false);
 
     // Paths where navbar/footer should not be displayed
-    const showNavbar = !location.pathname.startsWith('/admin');
-    const showFooter = !location.pathname.startsWith('/admin') && !location.pathname.startsWith('/studio');
+    const isAuthPage = ['/login', '/register', '/forgot-password', '/reset-password'].some(path => location.pathname.startsWith(path));
+    const showNavbar = !location.pathname.startsWith('/admin') && !isAuthPage;
+    const showFooter = !location.pathname.startsWith('/admin') && !location.pathname.startsWith('/studio') && !isAuthPage;
 
     return (
         <div className="app-container">

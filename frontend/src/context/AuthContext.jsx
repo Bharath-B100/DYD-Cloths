@@ -1,7 +1,7 @@
 // src/context/AuthContext.jsx - React Authentication Context Provider
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { auth, googleProvider } from '../config/firebase';
-import { getRedirectResult, onAuthStateChanged, signInWithRedirect, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import API from '../config/api';
 
 const AuthContext = createContext(null);
@@ -140,32 +140,8 @@ export const AuthProvider = ({ children }) => {
         };
 
         const initializeAuth = async () => {
-            let redirectUser = null;
-
-            // Handle the redirect first. Settings are optional and must not
-            // delay or interfere with returning from Google sign-in.
-            try {
-                const result = await getRedirectResult(auth);
-                redirectUser = result?.user || null;
-            } catch (error) {
-                // A Firebase redirect error should not erase an otherwise
-                // usable backend session.
-                console.error('[AuthContext] Google redirect result error:', error);
-            }
-
-            if (cancelled) return;
-
-            if (redirectUser) {
-                try {
-                    // A redirect is an explicit sign-in attempt, so exchange
-                    // it even if an older backend session already exists.
-                    await restoreFirebaseSession(redirectUser, { force: true });
-                } catch (error) {
-                    console.error('[AuthContext] Google token login failed:', error);
-                }
-            } else {
-                await restoreBackendSession();
-            }
+            // Restore existing backend session on load (no redirect result to handle)
+            await restoreBackendSession();
 
             if (cancelled) return;
 
@@ -195,12 +171,12 @@ export const AuthProvider = ({ children }) => {
     }, [logoutLocal, restoreBackendSession, restoreFirebaseSession]);
 
     const loginWithGoogleRedirect = async () => {
-        try {
-            await signInWithRedirect(auth, googleProvider);
-        } catch (error) {
-            console.error('[AuthContext] Google redirect trigger failed:', error);
-            throw error;
-        }
+        // Use popup — works on localhost + all origins without redirect callback setup.
+        const result = await signInWithPopup(auth, googleProvider);
+        const firebaseUser = result.user;
+        // Exchange the fresh Firebase token for a backend JWT immediately.
+        await restoreFirebaseSession(firebaseUser, { force: true });
+        return { success: true };
     };
 
     const login = async (email, password) => {
