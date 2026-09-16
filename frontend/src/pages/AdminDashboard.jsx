@@ -1136,7 +1136,7 @@ const AdminDashboard = () => {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {orders.slice(0, 8).map(ord => (
+                                                        {(stats.recentOrders || []).slice(0, 8).map(ord => (
                                                             <tr key={ord._id || ord.id}>
                                                                 <td><strong>#ORD-{ord.orderNumber || ord._id?.slice(-6).toUpperCase()}</strong></td>
                                                                 <td>{ord.customer?.name || 'Guest'}</td>
