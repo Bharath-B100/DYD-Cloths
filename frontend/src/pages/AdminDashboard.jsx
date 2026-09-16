@@ -552,10 +552,18 @@ const AdminDashboard = () => {
 
     // Order status change action
     const handleUpdateOrderStatus = async (orderId, newStatus) => {
+        let cancelReason = undefined;
+        if (newStatus === 'cancelled') {
+            cancelReason = window.prompt("Please provide a reason for cancelling this order:");
+            if (cancelReason === null || cancelReason.trim() === '') {
+                if (window.Utils?.showToast) window.Utils.showToast("Cancellation reason is required.", "error");
+                return;
+            }
+        }
         if (actionBusy) return;
         setActionBusy(true);
         try {
-            const res = await API.put(`/orders/${orderId}/status`, { status: newStatus });
+            const res = await API.put(`/orders/${orderId}/status`, { status: newStatus, cancelReason });
             if (res.success) {
                 if (window.Utils?.showToast) window.Utils.showToast('Order status updated!', 'success');
                 // Update orders list in state

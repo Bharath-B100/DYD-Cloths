@@ -43,7 +43,7 @@ export default function TrackOrder() {
             <h2>Order {order.orderNumber}</h2>
             <p><strong>Current status:</strong> <span className={`status-badge status-${order.status}`}>{order.status}</span></p>
             {activeStage >= 0 && <div aria-label="Order progress" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, margin: '22px 0' }}>{stages.map((stage, index) => <span key={stage} aria-current={index === activeStage ? 'step' : undefined} className={`status-badge ${index <= activeStage ? 'status-confirmed' : ''}`} style={{ opacity: index <= activeStage ? 1 : .45 }}>{stage}</span>)}</div>}
-            {order.status === 'cancelled' && <p>This order has been cancelled.</p>}
+            {order.status === 'cancelled' && <p style={{ color: '#ef4444' }}>This order has been cancelled.{order.cancelReason && <span> Reason: {order.cancelReason}</span>}</p>}
             <p><strong>Placed:</strong> {formatDate(order.createdAt)} &nbsp; <strong>Total:</strong> {formatINR(order.totalAmount)}</p>
             {order.trackingNumber && <p><strong>Tracking number:</strong> {order.trackingNumber}</p>}
             {trackingUrl && <p><a href={trackingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline">Track with carrier</a></p>}

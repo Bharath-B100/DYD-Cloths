@@ -65,12 +65,15 @@ const OrderConfirmation = () => {
 
     return (
         <div className="container" style={{ maxWidth: '800px', margin: '140px auto 80px', textAlign: 'center', padding: '0 20px' }}>
-            <div className="confirmation-icon" style={{ backgroundColor: '#10b981', width: '100px', height: '100px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', margin: '0 auto 2rem', animation: 'bounce 0.6s ease' }}>
-                <i className="fas fa-check"></i>
+            <div className="confirmation-icon" style={{ backgroundColor: order.status === 'cancelled' ? '#ef4444' : '#10b981', width: '100px', height: '100px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', margin: '0 auto 2rem', animation: 'bounce 0.6s ease' }}>
+                <i className={`fas ${order.status === 'cancelled' ? 'fa-times' : 'fa-check'}`}></i>
             </div>
             
             <h1>{order.status === 'cancelled' ? 'Order Cancelled' : 'Order Received!'}</h1>
             <p style={{ color: 'var(--text-muted)' }}>{order.status === 'cancelled' ? 'This order has been cancelled. See your account for payment and refund details.' : 'Thank you for your purchase. Keep your order number to track its progress.'}</p>
+            {order.status === 'cancelled' && order.cancelReason && (
+                <p style={{ color: '#ef4444', fontWeight: 'bold', marginTop: '10px' }}>Reason: {order.cancelReason}</p>
+            )}
             
             <div className="order-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '24px', margin: '32px 0', textAlign: 'left' }}>
                 <h3 style={{ margin: '0 0 16px 0' }}>Order #{order.orderNumber || order._id?.slice(-8)}</h3>

@@ -116,11 +116,11 @@ const trackOrder = async (req, res) => {
         const orderNumber = requiredText(req.query.orderNumber, 'Order number', 80).toUpperCase();
         const email = requiredText(req.query.email, 'Email', 254).toLowerCase();
         const orders = await Order.find({ orderNumber, 'customer.email': email })
-            .select('orderNumber status totalAmount createdAt estimatedDelivery items.quantity shippingAddress.trackingNumber shippingAddress.trackingUrl')
+            .select('orderNumber status totalAmount createdAt estimatedDelivery items.quantity shippingAddress.trackingNumber shippingAddress.trackingUrl cancelReason')
             .sort({ createdAt: -1 }).lean();
         if (!orders.length) throw fail('No orders found', 404);
         res.json({ success: true, count: orders.length, data: orders.map(order => ({ orderNumber: order.orderNumber,
-            status: order.status, totalAmount: order.totalAmount, formattedTotal: formatINR(order.totalAmount), createdAt: order.createdAt,
+            status: order.status, cancelReason: order.cancelReason, totalAmount: order.totalAmount, formattedTotal: formatINR(order.totalAmount), createdAt: order.createdAt,
             estimatedDelivery: order.estimatedDelivery, trackingNumber: order.shippingAddress?.trackingNumber || null,
             trackingUrl: order.shippingAddress?.trackingUrl || null, itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0) })) });
     } catch (error) { return handleError(res, error); }
@@ -132,7 +132,7 @@ const cancelOrder = async (req, res) => {
         const order = await Order.findById(req.params.id);
         if (!order) throw fail('Order not found', 404);
         if (req.user.role !== 'admin' && !ownsOrder(order, req.user)) throw fail('Not authorized to cancel this order', 403);
-        const cancelled = await transitionOrder(order._id, 'cancelled');
+        const cancelled = await transitionOrder(order._id, 'cancelled', { cancelReason: 'Cancelled by user' });
         res.json({ success: true, message: cancelled.refundRequired ? 'Order cancelled. Your paid amount is awaiting a refund.' : 'Order cancelled successfully', data: formatOrder(cancelled) });
     } catch (error) { return handleError(res, error); }
 };

@@ -101,6 +101,10 @@ async function transitionOrder(orderId, nextStatus, tracking = {}) {
         update.inventoryReleasePending = true;
         // Historical records have no reservation ledger; only the winning transition restores them.
         if (!order.inventoryManaged) update.inventoryReleased = true;
+        
+        if (tracking.cancelReason !== undefined) {
+            update.cancelReason = String(tracking.cancelReason).trim();
+        }
     }
     // A state-and-payment predicate prevents concurrent shipping/cancellation/payment updates from winning together.
     if (!sameStatus || Object.keys(update).length > 1) {
