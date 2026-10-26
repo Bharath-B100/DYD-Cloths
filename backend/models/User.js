@@ -95,6 +95,9 @@ phone: {
         type: Boolean,
         default: false
     },
+    emailVerificationToken: { type: String, select: false, index: true },
+    emailVerificationExpires: { type: Date, select: false },
+    emailVerificationSentAt: { type: Date, select: false },
     lastLogin: Date,
     passwordChangedAt: Date,
     passwordResetToken: { type: String, select: false },

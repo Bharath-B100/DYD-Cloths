@@ -37,9 +37,7 @@ const Register = () => {
         try {
             const res = await register({ name, email, phone, password, passwordConfirm });
             if (res.success) {
-                if (window.Utils?.showToast) window.Utils.showToast('Registered successfully! Logging in...', 'success');
-                // Automatically log in the user after registration
-                navigate(destination, { replace: true });
+                navigate(`/verify-email?redirect=${encodeURIComponent(destination)}`, { replace: true, state: { email } });
             }
         } catch (err) {
             if (window.Utils?.showToast) window.Utils.showToast(err.message || 'Registration failed', 'error');
@@ -75,6 +73,7 @@ const Register = () => {
                         <p>Join D<span style={{ color: 'var(--primary)' }}>Y</span>D-Clothes today</p>
                     </div>
 
+                    <p>Verify your email after signup to activate your account.</p>
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label htmlFor="name">Full Name</label>

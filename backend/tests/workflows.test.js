@@ -121,3 +121,51 @@ test('both wishlist APIs omit inactive products and return selling prices', asyn
         assert.equal(res.body.data.wishlist[0].isActive, true);
     }
 });
+
+test('signup requires email ownership before login or protected access', async t => {
+    const mail = require('../services/email');
+    const auth = require('../controllers/authController');
+    const verification = require('../controllers/emailVerificationController');
+    t.mock.method(mail, 'isConfigured', () => true);
+    let sentToken;
+    t.mock.method(mail, 'sendEmailVerification', async (email, token) => { assert.equal(email, 'verify@example.test'); sentToken = token; });
+    process.env.JWT_SECRET = 'isolated-test-secret';
+    const req = { body: { name: 'Verify Tester', email: 'verify@example.test', password: 'TestPassword123!', passwordConfirm: 'TestPassword123!' } };
+    const registered = response();
+    await auth.register(req, registered);
+    assert.equal(registered.statusCode, 201);
+    assert.equal(registered.body.verificationRequired, true);
+    assert.equal(registered.body.token, undefined);
+    let user = await User.findOne({ email: req.body.email }).select('+emailVerificationToken');
+    assert.equal(user.emailVerified, false);
+    assert.notEqual(user.emailVerificationToken, sentToken);
+    const denied = response(); await auth.login(req, denied); assert.equal(denied.statusCode, 403);
+    const jwt = require('jsonwebtoken');
+    const blocked = response(); let allowed = false;
+    await require('../middleware/auth').protect({ headers: { authorization: 'Bearer ' + jwt.sign({ id: user.id }, process.env.JWT_SECRET) } }, blocked, () => { allowed = true; });
+    assert.equal(allowed, false); assert.equal(blocked.statusCode, 401);
+    const verified = response(); await verification.verifyEmail({ body: { token: sentToken } }, verified); assert.equal(verified.statusCode, 200);
+    const replay = response(); await verification.verifyEmail({ body: { token: sentToken } }, replay); assert.equal(replay.statusCode, 400);
+    const loggedIn = response(); loggedIn.cookie = () => loggedIn;
+    await auth.login(req, loggedIn); assert.ok(loggedIn.body.token);
+    user = await User.findById(user.id).select('+emailVerificationToken'); assert.equal(user.emailVerified, true); assert.equal(user.emailVerificationToken, undefined);
+});
+
+test('verification expires, resend has a cooldown, and delivery failure can be retried', async t => {
+    const mail = require('../services/email');
+    const verification = require('../controllers/emailVerificationController');
+    t.mock.method(mail, 'isConfigured', () => true);
+    let token; let deliveries = 0;
+    const delivery = t.mock.method(mail, 'sendEmailVerification', async (email, value) => { token = value; deliveries++; });
+    const user = await User.create({ name: 'Pending Tester', email: 'pending@example.test', password: 'TestPassword123!', passwordConfirm: 'TestPassword123!' });
+    await Promise.all([verification.sendVerification(user.id), verification.sendVerification(user.id)]);
+    assert.equal(deliveries, 1);
+    await User.updateOne({ _id: user.id }, { emailVerificationExpires: new Date(Date.now() - 1000) });
+    const expired = response(); await verification.verifyEmail({ body: { token } }, expired); assert.equal(expired.statusCode, 400);
+    await User.updateOne({ _id: user.id }, { $unset: { emailVerificationSentAt: 1 } });
+    delivery.mock.mockImplementation(async () => { throw new Error('Simulated SMTP outage'); });
+    await assert.rejects(verification.sendVerification(user.id));
+    const pending = await User.findById(user.id).select('+emailVerificationToken +emailVerificationSentAt');
+    assert.equal(pending.emailVerificationToken, undefined); assert.equal(pending.emailVerificationSentAt, undefined); assert.equal(pending.emailVerified, false);
+    const unknown = response(); await verification.resendVerification({ body: { email: 'unknown@example.test' } }, unknown); assert.equal(unknown.statusCode, 200);
+});

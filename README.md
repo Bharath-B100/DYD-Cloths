@@ -38,3 +38,9 @@ Configure MONGODB_URI, JWT_SECRET, PUBLIC_SITE_URL and ALLOWED_ORIGINS in the ho
 Cash on delivery is the current customer checkout. Razorpay backend verification is hardened, but online checkout/resume, gateway webhooks and automated refund reconciliation are follow-up work. Paid cancellations flag refundRequired; cancellation does not itself refund a payment. Missing SMTP/background-removal configuration is reported honestly as unavailable.
 
 See docs/WORKFLOW_AUDIT.md for changes, test coverage and remaining limitations.
+
+### Email verification
+
+Password signup creates an active but unverified account and never issues a session. Verification emails contain a hashed-at-rest, single-use token valid for 30 minutes. The verification page requires confirmation; simply fetching the link does not activate an account. Resends have a 60-second per-account cooldown and authentication endpoint rate limits. Email delivery uses the same SMTP configuration as password recovery.
+
+Existing unverified accounts must use Resend verification email before password login; existing sessions are also checked. Verified Google identities can activate their accounts through Google sign-in. Password reset is available only for verified accounts. Profile editing does not change a verified email address. No existing accounts are automatically marked verified.

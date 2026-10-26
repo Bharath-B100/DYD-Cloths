@@ -4,6 +4,7 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const PasswordRecovery = lazy(() => import('./pages/PasswordRecovery'));
 const Home = lazy(() => import('./pages/Home'));
 const Shop = lazy(() => import('./pages/Shop'));
@@ -64,7 +65,7 @@ function AppContent() {
     const [cartOpen, setCartOpen] = React.useState(false);
 
     // Paths where navbar/footer should not be displayed
-    const isAuthPage = ['/login', '/register', '/forgot-password', '/reset-password'].some(path => location.pathname.startsWith(path));
+    const isAuthPage = ['/verify-email', '/login', '/register', '/forgot-password', '/reset-password'].some(path => location.pathname.startsWith(path));
     const showNavbar = !location.pathname.startsWith('/admin') && !isAuthPage;
     const showFooter = !location.pathname.startsWith('/admin') && !location.pathname.startsWith('/studio') && !isAuthPage;
 
@@ -80,7 +81,7 @@ function AppContent() {
                     <Route path="/shop" element={<Shop />} />
                     <Route path="/product/:id" element={<ProductDetail />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} /><Route path="/forgot-password" element={<PasswordRecovery />} /><Route path="/reset-password/:token" element={<PasswordRecovery />} />
+                    <Route path="/verify-email" element={<VerifyEmail />} /><Route path="/verify-email/:token" element={<VerifyEmail />} /><Route path="/register" element={<Register />} /><Route path="/forgot-password" element={<PasswordRecovery />} /><Route path="/reset-password/:token" element={<PasswordRecovery />} />
                     <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
                     <Route path="/checkout" element={<RequireAuth><Checkout /></RequireAuth>} />
                     <Route path="/checkout/confirmation" element={<OrderConfirmation />} />

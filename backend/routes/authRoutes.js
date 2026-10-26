@@ -23,6 +23,10 @@ const {
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
+const { verifyEmail, resendVerification } = require('../controllers/emailVerificationController');
+router.post('/verify-email', verifyEmail);
+router.post('/resend-verification', resendVerification);
+
 // Public routes
 router.post('/register', register);
 router.post('/login', login);

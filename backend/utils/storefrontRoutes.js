@@ -1,5 +1,5 @@
 const routes = new Set([
-    '/', '/shop', '/login', '/register', '/forgot-password', '/profile', '/checkout',
+    '/verify-email', '/', '/shop', '/login', '/register', '/forgot-password', '/profile', '/checkout',
     '/checkout/confirmation', '/studio', '/admin', '/track-order', '/shared-wishlist',
     '/faq', '/support', '/shipping-policy', '/returns-exchanges', '/privacy-policy', '/terms-of-service',
     '/index.html', '/shop.html', '/product.html', '/login.html', '/register.html', '/profile.html',
@@ -9,5 +9,5 @@ const routes = new Set([
     '/premium-cotton-tshirts.html', '/bulk-cotton-tshirts.html', '/shared-wishlist.html'
 ]);
 const isStorefrontRoute = path => routes.has(path.replace(/\/$/, '') || '/') ||
-    /^\/(product|reset-password)\/[^/]+\/?$/.test(path);
+    /^\/(product|reset-password|verify-email)\/[^/]+\/?$/.test(path);
 module.exports = { isStorefrontRoute };

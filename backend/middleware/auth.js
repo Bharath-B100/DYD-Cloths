@@ -57,6 +57,8 @@ const protect = async (req, res, next) => {
             });
         }
         
+        if (!currentUser.emailVerified) return res.status(401).json({ success: false, code: 'EMAIL_NOT_VERIFIED', error: 'Verify your email before logging in.' });
+
         // 8. Grant access - attach user to request
         req.user = currentUser;
         next();
@@ -115,7 +117,7 @@ const isLoggedIn = async (req, res, next) => {
             }
             
             // 3. Check if user changed password after token was issued
-            if (!currentUser.isActive || currentUser.changedPasswordAfter(decoded.iat) || (decoded.version || 0) !== (currentUser.sessionVersion || 0)) {
+            if (!currentUser.emailVerified || !currentUser.isActive || currentUser.changedPasswordAfter(decoded.iat) || (decoded.version || 0) !== (currentUser.sessionVersion || 0)) {
                 return next();
             }
             

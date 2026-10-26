@@ -191,11 +191,7 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (userData) => {
         const res = await API.post('/auth/register', userData);
-        const registeredUser = res.data?.user || res.user;
-        if (res.success && res.token && registeredUser) {
-            setSession(res.token, registeredUser);
-            return { success: true, message: res.message };
-        }
+        if (res.success && res.verificationRequired) return res;
         throw new Error(res.message || 'Registration failed');
     };
 

@@ -7,7 +7,7 @@ async function run() {
     const server = await createServer({ server: { host: '127.0.0.1', port: 0 } });
     try {
         await server.listen();
-        for (const file of ['catalog.browser.cjs', 'recovery.browser.cjs', 'ux.browser.cjs']) {
+        for (const file of ['catalog.browser.cjs', 'recovery.browser.cjs', 'ux.browser.cjs', 'verification.browser.cjs']) {
             const child = spawn(process.execPath, [path.join(__dirname, file)], {
                 stdio: 'inherit', windowsHide: true,
                 env: { ...process.env, TEST_BASE_URL: server.resolvedUrls.local[0].replace(/\/$/, '') }
@@ -18,4 +18,3 @@ async function run() {
     } finally { await server.close(); }
 }
 run().catch(error => { console.error(error.message); process.exitCode = 1; });
-

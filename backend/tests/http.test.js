@@ -11,7 +11,7 @@ before(async () => {
 });
 after(() => new Promise(resolve => server.close(resolve)));
 test('valid SPA and legacy routes return HTML with 200', async () => {
-    for (const route of ['/shop', '/returns-exchanges', '/product/example', '/shop.html']) {
+    for (const route of ['/shop', '/returns-exchanges', '/product/example', '/shop.html', '/verify-email', '/verify-email/example']) {
         const response = await fetch(base + route);
         assert.equal(response.status, 200, route);
         assert.match(response.headers.get('content-type'), /html/);

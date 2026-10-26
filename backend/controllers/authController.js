@@ -8,6 +8,7 @@ const Product = require('../models/Product');
 const mongoose = require('mongoose');
 const validator = require('validator');
 const emailService = require('../services/email');
+const { sendVerification } = require('./emailVerificationController');
 const normalizeEmail = value => typeof value === 'string' ? value.trim().toLowerCase() : '';
 
 // ======================
@@ -79,11 +80,12 @@ const register = async (req, res) => {
         if (existingUser) {
             return res.status(400).json({
                 success: false,
-                error: 'User with this email already exists'
+                error: 'An account with this email already exists. Log in, or use Resend verification email if you have not verified it.'
             });
         }
         
-        // Create new user
+        if (!emailService.isConfigured()) return res.status(503).json({ success: false, error: 'Signup is temporarily unavailable while email delivery is offline.' });
+        // Create pending account without issuing a session.
         const newUser = await User.create({
             name,
             email,
@@ -92,12 +94,9 @@ const register = async (req, res) => {
             phone: phone || ''
         });
         
-        // Update last login
-        newUser.lastLogin = Date.now();
-        await newUser.save({ validateBeforeSave: false });
-        
-        // Send token response
-        createSendToken(newUser, 201, res);
+        try { await sendVerification(newUser._id); }
+        catch { return res.status(503).json({ success: false, error: 'Your account is pending verification, but the email could not be sent. Use Resend verification email to try again.' }); }
+        res.status(201).json({ success: true, verificationRequired: true, message: 'Check your inbox to verify your email before logging in.' });
         
     } catch (error) {
         console.error('Registration error:', error);
@@ -152,6 +151,8 @@ if (!user || !(await user.comparePassword(password))) {
             });
         }
         
+        if (!user.emailVerified) return res.status(403).json({ success: false, code: 'EMAIL_NOT_VERIFIED', error: 'Please verify your email before logging in. Use Resend verification email below.' });
+
         // Update last login
         user.lastLogin = Date.now();
         await user.save({ validateBeforeSave: false });
@@ -243,24 +244,11 @@ const updateProfile = async (req, res) => {
             }
         });
         
-        // If email is being updated, check if it's already taken
         if (updates.email !== undefined) {
-            updates.email = normalizeEmail(updates.email);
-            if (!validator.isEmail(updates.email)) return res.status(400).json({ success: false, error: 'Please provide a valid email' });
-            const existingUser = await User.findOne({ 
-                email: updates.email,
-                _id: { $ne: req.user.id }
-            });
-            
-            if (existingUser) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Email is already taken'
-                });
-            }
-            updates.emailVerified = false;
+            if (normalizeEmail(updates.email) !== req.user.email) return res.status(400).json({ success: false, error: 'Your verified email cannot be changed here. Contact support for help.' });
+            delete updates.email;
         }
-        
+
         // Update user
         const user = await User.findByIdAndUpdate(
             req.user.id,
@@ -383,7 +371,7 @@ const forgotPassword = async (req, res) => {
             return res.status(503).json({ success: false, error: 'Password recovery is currently unavailable. Please contact support.' });
         }
         user = await User.findOne({ email, isActive: true });
-        if (user) {
+        if (user && user.emailVerified) {
             const token = user.createPasswordResetToken();
             await user.save({ validateBeforeSave: false });
             await emailService.sendPasswordReset(email, token);
@@ -434,7 +422,7 @@ const resetPassword = async (req, res) => {
             passwordResetExpires: { $gt: Date.now() }
         });
         
-        if (!user || !user.isActive) {
+        if (!user || !user.isActive || !user.emailVerified) {
             return res.status(400).json({
                 success: false,
                 error: 'Token is invalid or has expired'
@@ -787,6 +775,13 @@ const googleLogin = async (req, res) => {
         }
 
         if (!user.isActive) return res.status(401).json({ success: false, error: 'Your account has been deactivated' });
+        if (!user.emailVerified) {
+            user.password = crypto.randomBytes(32).toString('hex');
+            user.emailVerified = true;
+            user.emailVerificationToken = undefined;
+            user.emailVerificationExpires = undefined;
+            user.emailVerificationSentAt = undefined;
+        }
         user.lastLogin = Date.now();
         await user.save({ validateBeforeSave: false });
 

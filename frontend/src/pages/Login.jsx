@@ -16,6 +16,7 @@ const Login = () => {
     const [redirecting, setRedirecting] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [verificationEmail, setVerificationEmail] = useState('');
 
     // If already logged in, redirect away from auth page
     useEffect(() => {
@@ -28,6 +29,7 @@ const Login = () => {
         e.preventDefault();
         setSubmitting(true);
         setError('');
+        setVerificationEmail('');
 
         try {
             const res = await login(email, password);
@@ -37,6 +39,7 @@ const Login = () => {
             }
         } catch (err) {
             setError(err.message || 'Login failed. Please try again.');
+            if (err.data?.code === 'EMAIL_NOT_VERIFIED') setVerificationEmail(email.trim());
         } finally {
             setSubmitting(false);
         }
@@ -45,6 +48,7 @@ const Login = () => {
     const handleGoogleLogin = async () => {
         setRedirecting(true);
         setError('');
+        setVerificationEmail('');
         try {
             await loginWithGoogleRedirect();
             if (window.Utils?.showToast) window.Utils.showToast('Signed in with Google!', 'success');
@@ -79,7 +83,7 @@ const Login = () => {
                                 id="email" 
                                 placeholder="name@example.com" 
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(e) => { setEmail(e.target.value); setVerificationEmail(''); }}
                                 required 
                             />
                         </div>
@@ -125,7 +129,7 @@ const Login = () => {
                         )}
                     </button>
 
-                    <div className="auth-links">
+                    <div className="auth-links">{verificationEmail && <p><Link to={`/verify-email?redirect=${encodeURIComponent(destination)}`} state={{ email: verificationEmail }}>Resend verification email</Link></p>}
                         <p><Link to="/forgot-password">Forgot password?</Link></p><p>Don't have an account? <Link to={`/register?redirect=${encodeURIComponent(destination)}`}>Register here</Link></p>
                     </div>
                 </div>

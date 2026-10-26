@@ -44,6 +44,6 @@ export default function PasswordRecovery() {
             {feedback && <p role={feedback.error ? 'alert' : 'status'} style={{ marginBottom: 16, color: feedback.error ? 'var(--danger, #b91c1c)' : 'inherit' }}>{feedback.text}</p>}
             <button className="btn btn-primary btn-full" disabled={busy}>{busy ? 'Please wait…' : token ? 'Save password' : 'Send reset link'}</button>
         </form>
-        <div className="auth-links"><p><Link to="/login">Back to login</Link> · <Link to="/support">Contact support</Link></p></div>
+        <div className="auth-links"><p><Link to="/verify-email">Verify your account</Link> · <Link to="/login">Back to login</Link> · <Link to="/support">Contact support</Link></p></div>
     </div></div></div>;
 }
