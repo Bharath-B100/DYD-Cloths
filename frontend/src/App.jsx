@@ -22,6 +22,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ToastContainer from './components/ToastContainer';
 import CartDrawer from './components/CartDrawer';
+import RouteScroll from './components/RouteScroll';
 
 // A component that handles redirects for legacy HTML paths to modern clean paths
 const LegacyRedirect = ({ target }) => {
@@ -69,6 +70,7 @@ function AppContent() {
 
     return (
         <div className="app-container">
+            <RouteScroll />
             <ToastContainer />
             {showNavbar && <Navbar onOpenCart={() => setCartOpen(true)} />}
             <main className="main-content">

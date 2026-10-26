@@ -229,14 +229,14 @@
 }
 
 /* Price */
-.product-price {
+.product-details .product-price {
     font-size: 1.75rem;
     font-weight: 800;
     color: var(--primary);
     margin: 0.5rem 0;
 }
 
-.original-price {
+.product-details .original-price {
     font-size: 1rem;
     font-weight: 500;
     color: var(--text-muted);
@@ -244,7 +244,7 @@
     margin-left: 0.75rem;
 }
 
-.discount-badge {
+.product-details .discount-badge {
     display: inline-block;
     margin-left: 0.5rem;
     padding: 3px 10px;
@@ -257,7 +257,7 @@
     letter-spacing: 0.3px;
 }
 
-.price-mrp {
+.product-details .price-mrp {
     font-size: 1rem;
     font-weight: 500;
     color: var(--text-muted);
@@ -265,7 +265,7 @@
     margin-right: 4px;
 }
 
-.price-sell {
+.product-details .price-sell {
     font-size: 1.75rem;
     font-weight: 800;
     color: #10b981;

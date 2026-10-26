@@ -2490,3 +2490,17 @@ body.has-promo-banner .navbar {
     font-weight: 600;
     text-transform: uppercase;
 }
+
+/* Keep touch viewports and fixed overlays at their native scale. */
+@media (max-width: 1280px) {
+    html { zoom: 1; }
+}
+[id] { scroll-margin-top: calc(var(--nav-height) + 1rem); }
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

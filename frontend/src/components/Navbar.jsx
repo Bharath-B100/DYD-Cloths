@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import API from '../config/api';
 import '../styles/main.css';
+import '../styles/navbar.css';
 
 
 const Navbar = ({ onOpenCart }) => {
@@ -74,17 +75,22 @@ const Navbar = ({ onOpenCart }) => {
     };
 
     return (
-        <nav className="navbar">
+        <nav className={`navbar ${mobileMenuOpen ? 'menu-open' : ''}`} onKeyDown={event => {
+            if (event.key === 'Escape') {
+                setMobileMenuOpen(false);
+                event.currentTarget.querySelector('.menu-toggle')?.focus();
+            }
+        }}>
             <div className="nav-container">
                 {/* Logo */}
                 <Link to="/" className="logo">
                     <img src="/images/LOGO_DYD.png" className="logo-icon" alt="DYD Logo" style={{ height: '40px', width: 'auto', borderRadius: '4px', objectFit: 'contain' }} />
                     <span className="site-name">D<span style={{ color: 'var(--primary)' }}>Y</span>D-Clothes</span>
-                    <small className="site-tagline" style={{ fontSize: '0.6em', opacity: 0.7, display: 'block', marginTop: '-5px' }}>Design your Dream Clothes</small>
+                    <small className="site-tagline">Design your Dream Clothes</small>
                 </Link>
 
                 {/* Search Bar */}
-                <div className="search-wrapper" ref={searchRef} style={{ flex: 1, maxWidth: '450px', margin: '0 2rem', position: 'relative' }}>
+                <div className="search-wrapper" ref={searchRef}>
                     <form className="site-search" onSubmit={handleSearchSubmit} style={{ width: '100%', position: 'relative' }}>
                         <i className="fas fa-search" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#666' }}></i>
                         <input 
@@ -121,12 +127,12 @@ const Navbar = ({ onOpenCart }) => {
                 </div>
 
                 {/* Mobile Menu Toggle */}
-                <button className="menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle navigation" aria-expanded={mobileMenuOpen}>
+                <button className="menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle navigation" aria-expanded={mobileMenuOpen} aria-controls="storefront-navigation">
                     <i className={`fas ${mobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
                 </button>
 
                 {/* Desktop Navigation & Actions */}
-                <div className={`nav-actions ${mobileMenuOpen ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div id="storefront-navigation" className={`nav-actions ${mobileMenuOpen ? 'active' : ''}`}>
                     
                     {/* Home Link (Pill shaped with gold-yellow text and background if active) */}
                     <Link to="/" style={{ 

@@ -1,5 +1,5 @@
 // src/pages/Shop.jsx - Catalog Collection Shop Page
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import API from '../config/api';
 import ProductCard from '../components/ProductCard';
@@ -20,6 +20,7 @@ const Shop = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [reload, setReload] = useState(0);
+    const resultsRef = useRef(null);
     const searchQuery = searchParams.get('search') || '';
     const selectedTypes = parseFilterValues(searchParams.get('type') || searchParams.get('productTypes'));
     const selectedCategories = parseFilterValues(searchParams.get('category'));
@@ -31,6 +32,7 @@ const Shop = () => {
             const next = new URLSearchParams(previous);
             if (value && value !== 'all' && value !== 'new') next.set(key, value); else next.delete(key);
             if (key === 'type') next.delete('productTypes');
+            next.delete('page');
             return next;
         });
     };
@@ -128,6 +130,19 @@ const Shop = () => {
 
         return result;
     }, [allProducts, searchQuery, selectedTypes, selectedCategories, selectedCatalogs, selectedPriceRange, selectedSort]);
+
+    const pageSize = 12;
+    const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+    const currentPage = Math.min(pageCount, Math.max(1, Number.parseInt(searchParams.get('page'), 10) || 1));
+    const visibleProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const changePage = page => {
+        setSearchParams(previous => {
+            const next = new URLSearchParams(previous);
+            if (page === 1) next.delete('page'); else next.set('page', String(page));
+            return next;
+        });
+        resultsRef.current?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    };
 
     const handleTypeCheckbox = type => setFilter('type', (selectedTypes.includes(type) ? selectedTypes.filter(value => value !== type) : [...selectedTypes, type]).join(','));
     const handleCategoryCheckbox = category => setFilter('category', (selectedCategories.includes(category) ? selectedCategories.filter(value => value !== category) : [...selectedCategories, category]).join(','));
@@ -255,10 +270,10 @@ const Shop = () => {
                 </aside>
 
                 {/* Products Area */}
-                <main className="shop-content">
+                <div className="shop-content" ref={resultsRef} aria-busy={loading}>
                     <div className="shop-header">
                         <p>
-                            {searchQuery ? `Results for “${searchQuery}”: ` : 'Showing '}<span className="count-badge">{filteredProducts.length}</span> Products
+                            {loading ? 'Loading products…' : error ? 'Catalog unavailable' : <>{searchQuery ? `Results for “${searchQuery}”: ` : 'Showing '}<span className="count-badge">{filteredProducts.length}</span> Products</>}
                         </p>
                         <div className="sort-wrapper">
                             <label htmlFor="sortSelect">Sort by:</label>
@@ -282,11 +297,11 @@ const Shop = () => {
                         </div>
                     ) : error ? <div role="alert" className="no-results"><p>{error}</p><button className="btn btn-primary" onClick={() => setReload(value => value + 1)}>Try again</button></div> : (
                         <div className="products-grid">
-                            {filteredProducts.map(prod => (
+                            {visibleProducts.map(prod => (
                                 <ProductCard key={prod._id || prod.id} product={prod} />
                             ))}
                             {filteredProducts.length === 0 && (
-                                <div className="no-results" style={{ textAlign: 'center', padding: '60px' }}>
+                                <div className="no-results">
                                     <i className="fas fa-search fa-3x" style={{ opacity: 0.3, marginBottom: '16px' }}></i>
                                     <p>No products found matching your criteria.</p>
                                     <button onClick={resetFilters} className="btn btn-outline" style={{ marginTop: '12px' }}>Reset Filters</button>
@@ -294,7 +309,12 @@ const Shop = () => {
                             )}
                         </div>
                     )}
-                </main>
+                    {!loading && !error && pageCount > 1 && <nav className="pagination" aria-label="Product pages">
+                        <button className="btn btn-outline" disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}>Previous</button>
+                        <span aria-live="polite">Page {currentPage} of {pageCount}</span>
+                        <button className="btn btn-outline" disabled={currentPage === pageCount} onClick={() => changePage(currentPage + 1)}>Next</button>
+                    </nav>}
+                </div>
             </div>
         </div>
     );
