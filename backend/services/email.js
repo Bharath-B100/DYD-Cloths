@@ -1,7 +1,9 @@
 const nodemailer = require('nodemailer');
 const { passwordResetEmail } = require('./passwordResetEmail');
 
-const isConfigured = () => Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM && process.env.PUBLIC_SITE_URL);
+const gmail = require('./gmailDelivery').createGmailDelivery();
+const provider = () => process.env.EMAIL_PROVIDER || 'smtp';
+const isConfigured = () => Boolean(process.env.PUBLIC_SITE_URL && (provider() === 'gmail' ? gmail.configured() : provider() === 'smtp' && process.env.SMTP_HOST && process.env.SMTP_FROM));
 
 const sendPasswordReset = async (email, token) => {
     if (!isConfigured()) throw new Error('Email delivery is not configured');
@@ -12,6 +14,8 @@ const sendPasswordReset = async (email, token) => {
 };
 
 const sendEmail = async (email, content) => {
+    if (!isConfigured()) throw new Error('Email delivery is not configured');
+    if (provider() === 'gmail') return gmail.send(email, content);
     const port = Number(process.env.SMTP_PORT || 587);
     const transport = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
