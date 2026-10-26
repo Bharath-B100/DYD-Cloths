@@ -69,6 +69,7 @@ const Register = () => {
         <div className="auth-page">
             <div className="auth-wrapper">
                 <div className="auth-container">
+                    <Link to="/shop" className="auth-back-link">← Back to shopping</Link>
                     <div className="auth-header">
                         <h2>Create Account</h2>
                         <p>Join D<span style={{ color: 'var(--primary)' }}>Y</span>D-Clothes today</p>

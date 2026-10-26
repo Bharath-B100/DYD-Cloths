@@ -2504,3 +2504,8 @@ body.has-promo-banner .navbar {
         transition-duration: 0.01ms !important;
     }
 }
+
+.btn.btn-primary, .auth-page .btn-primary, .navbar .auth-link { color: #171300 !important; }
+.auth-back-link { display: inline-block; margin-bottom: 1.25rem; color: var(--primary); }
+.auth-error { color: #ffb4b4; padding: 1rem; border: 1px solid currentColor; border-radius: 8px; margin-bottom: 1rem; }
+:where(button, a, input, select, textarea):focus-visible { outline: 3px solid #f4b400; outline-offset: 3px; }

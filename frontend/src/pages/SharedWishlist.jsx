@@ -26,7 +26,7 @@ export default function SharedWishlist() {
         return () => { cancelled = true; };
     }, [userId]);
 
-    return <section className="container" style={{ maxWidth: 1200, margin: '48px auto 80px', padding: '0 20px' }}>
+    return <section className="container" style={{ maxWidth: 1200, margin: 'calc(var(--nav-height) + 32px) auto 80px', padding: '0 20px' }}>
         <header className="page-header"><h1>Shared Wishlist</h1><p>Items saved by a DYD-Clothes customer.</p></header>
         {message ? <div className="order-card" style={{ padding: 28, marginTop: 24, textAlign: 'center' }}>{message}</div> : <div className="product-grid" style={{ marginTop: 28 }}>{wishlist.map(product => <ProductCard key={product._id || product.id} product={product} />)}</div>}
         <p style={{ textAlign: 'center', marginTop: 28 }}><Link to="/shop" className="btn btn-primary">Browse the collection</Link></p>

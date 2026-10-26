@@ -45,7 +45,7 @@ const createHttpError = (response, data) => {
 };
 
 const createNetworkError = (error, url) => {
-    if (error?.name === 'ApiError') return error;
+    if (error?.name === 'ApiError' || error?.name === 'AbortError') return error;
 
     const networkError = new Error(
         `Network error while reaching ${url}. Check that the backend API is running and reachable.`
@@ -95,12 +95,12 @@ const API = {
             return data;
         } catch (error) {
             const requestError = createNetworkError(error, url);
-            console.error(`API Error [${endpoint}]:`, requestError);
+            if (requestError.name !== 'AbortError') console.error(`API Error [${endpoint}]:`, requestError);
             throw requestError;
         }
     },
 
-    get: (endpoint) => API.request(endpoint, { method: 'GET' }),
+    get: (endpoint, options = {}) => API.request(endpoint, { ...options, method: 'GET' }),
     
     post: (endpoint, body) => API.request(endpoint, {
         method: 'POST',

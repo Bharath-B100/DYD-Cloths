@@ -685,3 +685,9 @@
     .product-card:hover .product-image img { transform: none; }
     .filter-option:hover { transform: none; }
 }
+
+.mobile-filter-toggle { display: none; }
+@media (max-width: 1024px) {
+ .mobile-filter-toggle { display: block; }
+ .shop-page .filters-sidebar:not(.filters-open) { display: none; }
+}

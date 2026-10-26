@@ -1,6 +1,6 @@
 const Order = require('../models/Order');
 const { quoteCheckout, requiredText, fail, isProductId } = require('../services/checkout');
-const { transitionOrder, reserveInventory, releaseInventory, reserveCoupon, releaseCoupon } = require('../services/orderLifecycle');
+const { transitionOrder, reserveInventory, reserveCoupon } = require('../services/orderLifecycle');
 
 const formatINR = amount => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount || 0);
 const formatOrder = order => {
@@ -24,7 +24,6 @@ const quoteOrder = async (req, res) => {
 
 const createOrder = async (req, res) => {
     let order;
-    let saved = false;
     try {
         const input = req.body;
         if (input.requestId !== undefined) {
@@ -43,25 +42,27 @@ const createOrder = async (req, res) => {
             [key, requiredText(input.shippingAddress?.[key], `Shipping ${key}`, key === 'street' ? 300 : 100)]));
         shippingAddress.country = requiredText(input.shippingAddress?.country || 'India', 'Shipping country', 100);
         if (!['cash_on_delivery', 'razorpay'].includes(input.paymentMethod)) throw fail('Please select a supported payment method.');
-        const { coupon, codEnabled, ...quote } = await quoteCheckout(input, req.user.id);
-        if (input.paymentMethod === 'cash_on_delivery' && !codEnabled) throw fail('Cash on Delivery is currently unavailable.');
-        if (input.paymentMethod === 'razorpay' && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_ID.includes('YOUR_KEY'))) {
-            throw fail('Online payments are currently unavailable.');
-        }
-        order = new Order({ ...quote, user: req.user.id, requestId: input.requestId, customer, shippingAddress, notes: input.notes,
-            paymentMethod: input.paymentMethod, inventoryManaged: true, couponReservationManaged: Boolean(coupon) });
-        // Validate every field before decrementing stock or consuming a coupon.
-        await order.validate();
-        await reserveInventory(order);
-        await reserveCoupon(order, coupon);
-        await order.save();
-        saved = true;
+        // All stock, coupon and order writes commit together or roll back together.
+        // Recreate the document inside the callback because MongoDB may retry it.
+        await Order.db.transaction(async session => {
+            const { coupon, codEnabled, ...quote } = await quoteCheckout(input, req.user.id, session);
+            if (typeof input.totalAmount !== 'number' || !Number.isFinite(input.totalAmount) ||
+                Math.round(input.totalAmount * 100) !== Math.round(quote.totalAmount * 100)) {
+                throw fail('Prices or shipping changed. Please review the refreshed total before placing your order.', 409);
+            }
+            if (input.paymentMethod === 'cash_on_delivery' && !codEnabled) throw fail('Cash on Delivery is currently unavailable.');
+            if (input.paymentMethod === 'razorpay' && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_ID.includes('YOUR_KEY'))) {
+                throw fail('Online payments are currently unavailable.');
+            }
+            order = new Order({ ...quote, user: req.user.id, requestId: input.requestId, customer, shippingAddress, notes: input.notes,
+                paymentMethod: input.paymentMethod, inventoryManaged: true, couponReservationManaged: Boolean(coupon) });
+            await order.validate();
+            await reserveInventory(order, session);
+            await reserveCoupon(order, coupon, session);
+            await order.save({ session });
+        });
         return res.status(201).json({ success: true, message: 'Order created successfully', data: formatOrder(order) });
     } catch (error) {
-        if (order && !saved) {
-            try { await releaseInventory(order); await releaseCoupon(order); }
-            catch (cleanupError) { console.error(`Order ${order._id} reservation cleanup requires retry:`, cleanupError); }
-        }
         if (error.code === 11000 && req.body.requestId) {
             const existing = await Order.findOne({ user: req.user.id, requestId: req.body.requestId });
             if (existing) return res.status(200).json({ success: true, message: 'Order already created', data: formatOrder(existing) });

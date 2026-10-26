@@ -18,59 +18,17 @@ const formatINR = (amount) => new Intl.NumberFormat('en-IN', {
 // @access  Public
 const getProducts = async (req, res) => {
     try {
-        // Parse query parameters
-        const page = Math.max(1, Math.min(100000, parseInt(req.query.page, 10) || 1));
-        const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 100));
-        const skip = (page - 1) * limit;
-        
-        // Build query
-        let query = { isActive: true };
-        
-        // Filter by category
-        if (req.query.category) {
-            query.category = requiredText(req.query.category, 'Category', 80);
-        }
-
-        if (req.query.type) {
-            query.productTypes = requiredText(req.query.type, 'Product type', 80);
-        }
-
-        if (req.query.catalog) {
-            query.catalogTypes = requiredText(req.query.catalog, 'Catalog', 80);
-        }
-        
-        // Filter by price range
-        if (req.query.minPrice !== undefined || req.query.maxPrice !== undefined) {
-            const comparisons = [];
-            for (const [field, operator] of [['minPrice', '$gte'], ['maxPrice', '$lte']]) {
-                if (req.query[field] !== undefined) {
-                    const value = Number(requiredText(req.query[field], field, 30));
-                    if (!Number.isFinite(value) || value < 0) throw fail('Price filters must be non-negative numbers.');
-                    comparisons.push({ [operator]: [{ $ifNull: ['$sellingPrice', '$price'] }, value] });
-                }
-            }
-            query.$expr = { $and: comparisons };
-        }
-        
-        // Search by keyword
-        if (req.query.search) {
-            query.$text = { $search: requiredText(req.query.search, 'Search', 200) };
-        }
-        
-        // Get total count for pagination
-        const total = await Product.countDocuments(query);
-        
-        // Get products with pagination
-        const products = await Product.find(query)
-            .select('-__v')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean();
-        
-        // Calculate total pages
+        const { catalogQuery, effectivePrice } = require('../services/catalogQuery');
+        const { match, sort, page: requestedPage, limit } = catalogQuery(req.query);
+        const total = await Product.countDocuments(match);
         const totalPages = Math.ceil(total / limit);
-        
+        const page = Math.min(requestedPage, Math.max(1, totalPages));
+        const products = await Product.aggregate([
+            { $match: match }, { $addFields: { catalogPrice: effectivePrice } },
+            { $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit },
+            { $project: { __v: 0, stockReservations: 0, catalogPrice: 0 } }
+        ]);
+
         res.json({
             success: true,
             count: products.length,

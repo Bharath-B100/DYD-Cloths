@@ -10,6 +10,11 @@ const DB_STATE_NAMES = {
 };
 
 let lastConnectionError = null;
+let retryTimer = null;
+let retryDelay = 1000;
+let connecting = null;
+let stopped = false;
+const stopRetry = () => { if (retryTimer) clearTimeout(retryTimer); retryTimer = null; };
 
 const getDatabaseStatus = () => {
     const readyState = mongoose.connection.readyState;
@@ -19,7 +24,7 @@ const getDatabaseStatus = () => {
     };
 };
 
-const connectDB = async () => {
+const attemptConnection = async () => {
     if (mongoose.connection.readyState === 1) {
         return mongoose.connection;
     }
@@ -36,6 +41,8 @@ const connectDB = async () => {
         });
 
         lastConnectionError = null;
+        retryDelay = 1000;
+        stopRetry();
 
         console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
         console.log(`📊 Database: ${conn.connection.name}`);
@@ -46,10 +53,26 @@ const connectDB = async () => {
         console.error(`⚠️ MongoDB connection failed: ${error.message}`);
         // The API still starts so its health endpoint can report the outage,
         // but it does not claim that a database connection exists.
+        if (!stopped && !retryTimer) {
+            retryTimer = setTimeout(() => {
+                retryTimer = null;
+                connectDB();
+            }, retryDelay);
+            retryTimer.unref?.();
+            retryDelay = Math.min(retryDelay * 2, 30000);
+        }
         return null;
     }
 };
 
+const connectDB = () => {
+    stopped = false;
+    if (connecting) return connecting;
+    stopRetry();
+    connecting = attemptConnection().finally(() => { connecting = null; });
+    return connecting;
+};
+connectDB.stopRetries = () => { stopped = true; stopRetry(); };
 connectDB.getStatus = getDatabaseStatus;
 connectDB.getLastError = () => lastConnectionError;
 

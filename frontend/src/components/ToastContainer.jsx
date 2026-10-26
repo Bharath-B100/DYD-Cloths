@@ -27,7 +27,7 @@ const ToastContainer = () => {
             setToasts(prev => [...prev, { id, message, type }]);
 
             // Auto-remove after 4 seconds
-            setTimeout(() => {
+            if (type !== 'error' && type !== 'warning') setTimeout(() => {
                 removeToast(id);
             }, 4000);
         };
@@ -48,12 +48,12 @@ const ToastContainer = () => {
     return (
         <div id="toast-container">
             {toasts.map(toast => (
-                <div key={toast.id} className={`toast toast-${toast.type}`}>
+                <div key={toast.id} className={`toast toast-${toast.type}`} role={toast.type === 'error' ? 'alert' : 'status'} aria-atomic="true">
                     <div className="toast-content">
                         <i className={`fas ${getToastIcon(toast.type)}`}></i>
                         <span>{toast.message}</span>
                     </div>
-                    <button className="toast-close" onClick={() => removeToast(toast.id)}>&times;</button>
+                    <button className="toast-close" aria-label="Dismiss notification" onClick={() => removeToast(toast.id)}>&times;</button>
                 </div>
             ))}
         </div>

@@ -57,10 +57,10 @@ function customPrice(design, settings) {
         + textCount * settingNumber(settings, 'price_text_per_unit', 50));
 }
 
-async function quoteCheckout({ items, couponCode }, userId) {
+async function quoteCheckout({ items, couponCode }, userId, session = null) {
     if (!Array.isArray(items) || !items.length || items.length > 100) throw fail('Order must contain between 1 and 100 items.');
     const rows = await Settings.find({ key: { $in: ['shipping_fee', 'free_shipping_threshold', 'enable_cod',
-        ...Object.values(fabricSettings).map(([key]) => key), 'price_print_per_side', 'price_text_per_unit'] } }).lean();
+        ...Object.values(fabricSettings).map(([key]) => key), 'price_print_per_side', 'price_text_per_unit'] } }).session(session).lean();
     const settings = Object.fromEntries(rows.map(row => [row.key, row.value]));
     const normalized = [];
     const quantities = new Map();
@@ -84,7 +84,7 @@ async function quoteCheckout({ items, couponCode }, userId) {
         if (!isProductId(productId)) throw fail('Invalid product ID. Please refresh your cart.');
         let product = products.get(productId);
         if (!product) {
-            product = await Product.findOne({ _id: productId, isActive: true }).lean();
+            product = await Product.findOne({ _id: productId, isActive: true }).session(session).lean();
             if (!product) throw fail('A product in your cart is no longer available.', 404);
             products.set(productId, product);
         }
@@ -107,7 +107,7 @@ async function quoteCheckout({ items, couponCode }, userId) {
     let normalizedCode = null;
     if (couponCode !== undefined && couponCode !== null && couponCode !== '') {
         normalizedCode = requiredText(couponCode, 'Coupon code', 80).toUpperCase();
-        coupon = await Coupon.findOne({ code: normalizedCode, isActive: true });
+        coupon = await Coupon.findOne({ code: normalizedCode, isActive: true }).session(session);
         if (!coupon) throw fail('Invalid coupon code.');
         const result = await coupon.isValid(subtotal, userId, normalized);
         if (!result.valid) throw fail(result.message);

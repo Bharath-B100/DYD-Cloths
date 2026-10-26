@@ -15,6 +15,7 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [redirecting, setRedirecting] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState('');
 
     // If already logged in, redirect away from auth page
     useEffect(() => {
@@ -26,6 +27,7 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
+        setError('');
 
         try {
             const res = await login(email, password);
@@ -34,7 +36,7 @@ const Login = () => {
                 navigate(destination, { replace: true });
             }
         } catch (err) {
-            if (window.Utils?.showToast) window.Utils.showToast(err.message || 'Login failed', 'error');
+            setError(err.message || 'Login failed. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -42,6 +44,7 @@ const Login = () => {
 
     const handleGoogleLogin = async () => {
         setRedirecting(true);
+        setError('');
         try {
             await loginWithGoogleRedirect();
             if (window.Utils?.showToast) window.Utils.showToast('Signed in with Google!', 'success');
@@ -51,7 +54,7 @@ const Login = () => {
             const msg = err.code === 'auth/popup-closed-by-user'
                 ? 'Sign-in cancelled'
                 : err.message || 'Google Sign-In failed';
-            if (window.Utils?.showToast) window.Utils.showToast(msg, 'error');
+            setError(msg);
         } finally {
             setRedirecting(false);
         }
@@ -61,11 +64,13 @@ const Login = () => {
         <div className="auth-page">
             <div className="auth-wrapper">
                 <div className="auth-container">
+                    <Link to="/shop" className="auth-back-link">← Back to shopping</Link>
                     <div className="auth-header">
                         <h2>Welcome Back</h2>
                         <p>Login to your account</p>
                     </div>
 
+                    {error && <p role="alert" className="auth-error">{error}</p>}
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label htmlFor="email">Email Address</label>

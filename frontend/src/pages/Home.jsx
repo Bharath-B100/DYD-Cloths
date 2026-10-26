@@ -127,7 +127,7 @@ const Home = () => {
                             </div>
                             <div className="floating-badge badge-3">
                                 <i className="fas fa-undo"></i>
-                                <Link to="/returns">Returns Information</Link>
+                                <Link to="/returns-exchanges">Returns Information</Link>
                             </div>
                         </div>
                     </div>

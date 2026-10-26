@@ -8,6 +8,8 @@ Use Node.js 22.12 or newer. Install with `npm ci --prefix backend` and `npm ci -
 
 Run `npm run dev --prefix backend` and `npm run dev --prefix frontend` in separate terminals. Vite proxies the API on port 5000. MongoDB must be reachable; /api/health reports 503 otherwise.
 
+Checkout requires a MongoDB replica set (MongoDB Atlas supports this) so stock, coupon usage and order creation can commit atomically. A standalone MongoDB server is not sufficient for checkout. Failed initial database connections retry with backoff, up to 30 seconds between attempts.
+
 Create an administrator with `npm run create-admin --prefix backend` after configuring ADMIN_EMAIL, ADMIN_NAME and ADMIN_PASSWORD. Existing data is preserved. Demo seed/clear commands delete data, require ALLOW_DATABASE_RESET=yes and refuse production.
 
 ## Verification
@@ -22,6 +24,10 @@ npm test --prefix backend
 ```
 
 Tests use isolated mocks and never send email, charge payments or modify production data.
+
+Backend tests also launch a disposable local MongoDB replica set in a new temporary directory. Install `mongod` on PATH, or set `MONGOD_BINARY` to its executable. Tests never connect to `MONGODB_URI` and do not touch the store database. Temporary test database files are retained under the system temporary directory for diagnostics.
+
+The frontend test command now runs both unit and browser tests and starts its own Vite server. Browser tests require Playwright and Microsoft Edge. Install Playwright locally with `npm install --no-save --package-lock=false --prefix frontend playwright`, or set `PLAYWRIGHT_MODULE_PATH` to an existing installation. Use `BROWSER_CHANNEL` to select another installed Chromium channel. Missing prerequisites fail the command instead of silently skipping tests. `npm run test:unit --prefix frontend` runs only the unit tests.
 
 ## Deployment
 

@@ -133,7 +133,7 @@
 /* Thumbnails */
 .product-thumbnails {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    grid-template-columns: repeat(auto-fill, 70px);
     gap: 0.75rem;
     margin-top: 1.25rem;
 }
@@ -1152,3 +1152,4 @@
         transform: none;
     }
 }
+.gallery-enlarge { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; cursor: zoom-in; border-radius: 12px; }

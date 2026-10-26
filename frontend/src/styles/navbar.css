@@ -47,3 +47,13 @@
     .navbar .nav-actions a { min-height: 48px; justify-content: center; text-align: center; white-space: normal; overflow-wrap: anywhere; }
     .navbar .nav-actions button { align-self: center; min-width: 48px; min-height: 48px; }
 }
+
+.mobile-shopping-actions { display: none; }
+@media (max-width: 1280px) {
+ .mobile-shopping-actions { display: flex; margin-left: auto; gap: 4px; }
+ .mobile-shopping-actions button { min-width: 44px; min-height: 44px; border: 1px solid var(--border-color); border-radius: 50%; background: var(--bg-card); color: white; }
+ .navbar .nav-container { gap: 6px; }
+ .navbar .logo { min-width: 0; }
+ .navbar.search-open .search-wrapper { display: block; position: absolute; top: 100%; left: 1rem; right: 1rem; max-width: none; padding: .5rem; background: var(--bg-primary); z-index: 2; }
+}
+@media (max-width: 380px) { .navbar .site-name { font-size: 13px; } .navbar .logo-icon { max-width: 32px; } }

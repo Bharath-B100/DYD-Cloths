@@ -1,6 +1,6 @@
 // src/components/Footer.jsx - Shared Storefront Footer
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import API from '../config/api';
 import '../styles/main.css';
@@ -8,7 +8,6 @@ import '../styles/main.css';
 
 const Footer = () => {
     const { settings } = useAuth();
-    const location = useLocation();
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
     const [msgType, setMsgType] = useState('');
@@ -35,12 +34,11 @@ const Footer = () => {
     };
 
     const currentYear = new Date().getFullYear();
-    const isHomePage = location.pathname === '/';
 
     return (
         <footer className="footer">
             <div className="container">
-                {isHomePage && (
+                {(
                     <div className="footer-grid">
                     {/* Logo & Socials */}
                     <div className="footer-col">
@@ -49,10 +47,10 @@ const Footer = () => {
                             <span className="site-name">D<span style={{ color: 'var(--primary)' }}>Y</span>D-Clothes</span>
                             <small className="site-tagline" style={{ fontSize: '0.6em', opacity: 0.7, display: 'block', marginTop: '-5px' }}>Design your Dream Clothes</small>
                         </Link>
-                        <p className="footer-description">Creating custom t-shirts that tell your story. Premium quality, fast delivery, and 100% satisfaction guaranteed.</p>
+                        <p className="footer-description">Creating custom t-shirts that tell your story. Explore our collection or bring your own design.</p>
                         <div className="social-links">
                             {settings?.social_whatsapp && (
-                                <a href={`https://wa.me/${settings.social_whatsapp}`} className="social-link" target="_blank" rel="noopener noreferrer">
+                                <a href={`https://wa.me/${settings.social_whatsapp}`} className="social-link" aria-label="WhatsApp" target="_blank" rel="noopener noreferrer">
                                     <i className="fab fa-whatsapp"></i>
                                 </a>
                             )}
@@ -92,13 +90,13 @@ const Footer = () => {
                             <div className="input-group">
                                 <input 
                                     type="email" 
-                                    placeholder="Your email" 
+                                    placeholder="Your email" aria-label="Newsletter email address"
                                     className="form-control" 
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required 
                                 />
-                                <button type="submit" className="btn btn-primary">
+                                <button type="submit" className="btn btn-primary" aria-label="Subscribe to newsletter">
                                     <i className="fas fa-paper-plane"></i>
                                 </button>
                             </div>

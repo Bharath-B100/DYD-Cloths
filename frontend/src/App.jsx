@@ -1,6 +1,6 @@
 // src/App.jsx - Main Application Layout & Routing
-import React, { lazy, Suspense, useState } from 'react';
-import SplashScreen from './components/SplashScreen';
+import React, { lazy, Suspense } from 'react';
+
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -130,14 +130,11 @@ function AppContent() {
 }
 
 function App() {
-    const [splashDone, setSplashDone] = useState(false);
+    React.useEffect(() => { document.getElementById('pre-splash')?.remove(); }, []);
 
     return (
         <AuthProvider>
             <CartProvider>
-                {!splashDone && (
-                    <SplashScreen duration={2200} onDone={() => setSplashDone(true)} />
-                )}
                 <Router>
                     <AppContent />
                 </Router>

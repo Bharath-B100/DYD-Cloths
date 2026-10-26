@@ -60,7 +60,7 @@ const CartDrawer = ({ isOpen, onClose }) => {
 
         onClose();
         if (!isLoggedIn) {
-            navigate('/login', { state: { from: '/checkout' } });
+            navigate('/login?redirect=%2Fcheckout');
             return;
         }
         navigate('/checkout');

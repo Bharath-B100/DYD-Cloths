@@ -47,3 +47,7 @@ export const orderItems = items => items.map(item => ({
     productId: item.id, quantity: item.quantity, size: item.size, color: item.color,
     image: item.image, customDesign: item.customDesign || null
 }));
+
+// A pending local snapshot includes deletions, which a union merge cannot preserve.
+export const reconcileCart = (localCart, serverCart, pending) => pending
+    ? normalizeCart(localCart) : mergeCarts(localCart, serverCart);

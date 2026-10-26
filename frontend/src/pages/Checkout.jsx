@@ -36,7 +36,7 @@ const Checkout = () => {
 
     useEffect(() => {
         if (loading || cartSyncLoading || processingRef.current || orderPlacedRef.current) return;
-        if (!isLoggedIn) navigate('/login', { replace: true, state: { from: '/checkout' } });
+        if (!isLoggedIn) navigate('/login?redirect=%2Fcheckout', { replace: true });
         else if (items.length === 0 && !cartSyncError) navigate('/shop', { replace: true });
     }, [isLoggedIn, loading, cartSyncLoading, cartSyncError, items.length, navigate]);
 

@@ -24,9 +24,14 @@ async function run() {
             const id = url.pathname.match(/^\/api\/products\/(\d+)$/);
             if (url.pathname === '/api/products') {
                 if (fail) return route.fulfill({ status: 503, json: { success: false, error: 'Catalog temporarily unavailable' } });
+                assert.equal(url.searchParams.get('limit'), '12', 'Shop must request only one page');
+                let filtered = [...products];
+                if (url.searchParams.get('search')) filtered = filtered.filter(p => p.name.includes(url.searchParams.get('search')));
+                if (url.searchParams.get('price') === 'under-500') filtered = filtered.filter(p => p.sellingPrice < 500);
+                filtered.sort(url.searchParams.get('sort') === 'low' ? (a,b) => a.sellingPrice - b.sellingPrice : (a,b) => new Date(b.createdAt) - new Date(a.createdAt));
                 const n = Number(url.searchParams.get('page') || 1);
-                const limit = Number(url.searchParams.get('limit') || 100);
-                return route.fulfill({ json: { success: true, totalPages: Math.ceil(products.length / limit), data: products.slice((n - 1) * limit, n * limit) } });
+                const limit = Number(url.searchParams.get('limit'));
+                return route.fulfill({ json: { success: true, currentPage: n, total: filtered.length, totalPages: Math.ceil(filtered.length / limit), data: filtered.slice((n - 1) * limit, n * limit) } });
             }
             return route.fulfill({ json: { success: true, data: id ? products[Number(id[1]) - 1] : [] } });
         });
@@ -42,6 +47,7 @@ async function run() {
             await page.waitForFunction(() => document.querySelector('.product-title')?.textContent === 'Cotton shirt 0');
             assert.ok(!new URL(page.url()).searchParams.has('page'));
             if (width <= 1024) assert.equal(await page.locator('.filters-sidebar').evaluate(el => getComputedStyle(el).position), 'static');
+            if (width <= 1024) await page.getByRole('button', { name: /Show filters/ }).click();
             await page.getByLabel('Under ₹500', { exact: true }).click();
             await page.waitForFunction(() => document.querySelectorAll('.product-card').length === 10);
             await page.getByRole('button', { name: 'Clear All Filters' }).click();

@@ -34,6 +34,7 @@ export default function PasswordRecovery() {
     };
 
     return <div className="auth-page"><div className="auth-wrapper"><div className="auth-container">
+                    <Link to="/shop" className="auth-back-link">← Back to shopping</Link>
         <div className="auth-header"><h2>{token ? 'Choose a new password' : 'Reset your password'}</h2><p>{token ? 'Use at least six characters.' : 'Enter your account email to request a reset link.'}</p></div>
         <form onSubmit={submit}>
             {token ? <>

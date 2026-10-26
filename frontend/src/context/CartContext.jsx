@@ -1,8 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import API from '../config/api';
-import { addCartItem, cartItemKey, mergeCarts, normalizeCart } from '../utils/cart';
+import { addCartItem, cartItemKey, mergeCarts, reconcileCart, normalizeCart } from '../utils/cart';
 
+const hasPendingCart = key => {
+    try { return localStorage.getItem(`${key}:pending`) === 'true'; } catch { return false; }
+};
+const markPendingCart = (key, pending) => {
+    try { if (pending) localStorage.setItem(`${key}:pending`, 'true'); else localStorage.removeItem(`${key}:pending`); } catch { /* Keep in-memory state when storage is unavailable. */ }
+};
 const CartContext = createContext(null);
 const readCart = key => {
     try { return normalizeCart(JSON.parse(localStorage.getItem(key) || '[]')); }
@@ -27,10 +33,16 @@ export const CartProvider = ({ children }) => {
     const cartItemsRef = useRef(cartItems);
     const ownerRef = useRef(storageKey);
     const generationRef = useRef(0);
+    const dirtyRef = useRef(hasPendingCart(storageKey));
     const syncQueue = useRef(Promise.resolve());
     const wishlistPending = useRef(new Set());
 
-    const replaceCart = useCallback(items => {
+    const replaceCart = useCallback((items, edited = false) => {
+        if (edited) {
+            dirtyRef.current = true;
+            markPendingCart(ownerRef.current, true);
+            saveCart(ownerRef.current, items);
+        }
         cartItemsRef.current = items;
         setCartItems(items);
     }, []);
@@ -49,6 +61,7 @@ export const CartProvider = ({ children }) => {
         // Only a guest cart can move into an account; switching accounts cannot leak saved carts.
         const local = previousOwner === storageKey ? cartItemsRef.current
             : mergeCarts(previousOwner === 'dyd_cart' && accountId ? cartItemsRef.current : [], readCart(storageKey));
+        if (previousOwner !== storageKey) dirtyRef.current = hasPendingCart(storageKey);
         ownerRef.current = storageKey;
         setCartOwner(storageKey);
         replaceCart(local);
@@ -61,7 +74,7 @@ export const CartProvider = ({ children }) => {
         API.get('/user/cart').then(res => {
             if (generation !== generationRef.current) return;
             if (!res.success || !Array.isArray(res.data?.cart)) throw new Error('The saved cart response was invalid.');
-            replaceCart(mergeCarts(cartItemsRef.current, res.data.cart));
+            replaceCart(reconcileCart(cartItemsRef.current, res.data.cart, dirtyRef.current));
             setCartSyncReady(true);
         }).catch(error => {
             if (generation === generationRef.current) setCartSyncError(error.message || 'Unable to load your saved cart.');
@@ -82,7 +95,13 @@ export const CartProvider = ({ children }) => {
             if (generation !== generationRef.current) return;
             try {
                 await API.post('/user/cart/sync', { cart: cartItems });
-                if (generation === generationRef.current) setCartSyncError('');
+                if (generation === generationRef.current) {
+                    setCartSyncError('');
+                    if (cartItemsRef.current === cartItems) {
+                        dirtyRef.current = false;
+                        markPendingCart(storageKey, false);
+                    }
+                }
             } catch (error) {
                 if (generation === generationRef.current) setCartSyncError('Your cart is saved on this device. Account sync failed; retry when connected.');
                 console.warn('Cart sync failed:', error);
@@ -93,13 +112,13 @@ export const CartProvider = ({ children }) => {
     const addItem = useCallback((product, showToast) => {
         const result = addCartItem(cartItemsRef.current, product);
         if (result.error) { showToast?.(result.error, 'warning'); return false; }
-        replaceCart(result.items);
+        replaceCart(result.items, true);
         showToast?.(`${product.name} added to cart!`, 'success');
         return true;
     }, [replaceCart]);
 
     const removeItem = useCallback((id, size, color, showToast, lineKey) => {
-        replaceCart(cartItemsRef.current.filter(item => lineKey ? cartItemKey(item) !== lineKey : !(item.id === String(id) && item.size === size && item.color === color)));
+        replaceCart(cartItemsRef.current.filter(item => lineKey ? cartItemKey(item) !== lineKey : !(item.id === String(id) && item.size === size && item.color === color)), true);
         showToast?.('Item removed from cart', 'info');
     }, [replaceCart]);
 
@@ -111,10 +130,10 @@ export const CartProvider = ({ children }) => {
         if (quantity < 1) { removeItem(id, size, color, showToast, lineKey); return; }
         const total = current.filter(value => value.id === item.id).reduce((sum, value) => sum + value.quantity, 0) + delta;
         if (total > item.maxStock || quantity > 999) { showToast?.(`Maximum stock reached (${item.maxStock})`, 'warning'); return; }
-        replaceCart(current.map(value => value === item ? { ...value, quantity } : value));
+        replaceCart(current.map(value => value === item ? { ...value, quantity } : value), true);
     }, [replaceCart, removeItem]);
 
-    const clearCart = useCallback(showToast => { replaceCart([]); showToast?.('Cart cleared', 'info'); }, [replaceCart]);
+    const clearCart = useCallback(showToast => { replaceCart([], true); showToast?.('Cart cleared', 'info'); }, [replaceCart]);
     const isInWishlist = productId => wishlist.some(item => String(item._id || item.id || item) === String(productId));
     const toggleWishlist = async (productId, showToast) => {
         if (!accountId) { showToast?.('Please login to use wishlist', 'info'); return false; }

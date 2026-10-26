@@ -676,7 +676,7 @@ const removeFromWishlist = async (req, res) => {
 // @access  Private
 const getWishlist = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).populate('wishlist', 'name price mainImage category rating reviewsCount');
+        const user = await User.findById(req.user.id).populate({ path: 'wishlist', match: { isActive: true }, select: 'name price sellingPrice mrp mainImage category rating reviewsCount stock isActive' });
         
         res.status(200).json({
             success: true,
@@ -694,7 +694,7 @@ const getWishlist = async (req, res) => {
 const getSharedWishlist = async (req, res) => {
     try {
         const { userId } = req.params;
-        const user = await User.findById(userId).populate('wishlist', 'name price mainImage category rating reviewsCount');
+        const user = await User.findById(userId).populate({ path: 'wishlist', match: { isActive: true }, select: 'name price sellingPrice mrp mainImage category rating reviewsCount stock isActive' });
         
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found' });

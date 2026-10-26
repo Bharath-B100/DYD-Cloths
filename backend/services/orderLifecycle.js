@@ -21,7 +21,7 @@ function inventoryItems(items) {
     return [...amounts].map(([productId, quantity]) => ({ productId, quantity }));
 }
 
-async function reserveInventory(order) {
+async function reserveInventory(order, session = null) {
     for (const { productId, quantity } of inventoryItems(order.items)) {
         const product = await Product.findOneAndUpdate({
             _id: productId, isActive: true, stock: { $gte: quantity },
@@ -29,7 +29,7 @@ async function reserveInventory(order) {
         }, {
             $inc: { stock: -quantity },
             $push: { stockReservations: { orderId: order._id, quantity } }
-        }, { new: true });
+        }, { new: true, session });
         if (!product) throw fail('An item just sold out or changed availability. Please refresh your cart.', 409);
     }
 }
@@ -48,7 +48,7 @@ async function releaseInventory(order) {
     }
 }
 
-async function reserveCoupon(order, coupon) {
+async function reserveCoupon(order, coupon, session = null) {
     if (!coupon) return;
     const filter = { _id: coupon._id, isActive: true, startDate: { $lte: new Date() }, endDate: { $gte: new Date() },
         'redemptions.orderId': { $ne: order._id } };
@@ -56,7 +56,7 @@ async function reserveCoupon(order, coupon) {
     if (coupon.perUserLimit != null && order.user) {
         // Include historical orders created before reservation accounting was introduced.
         const historical = await Order.countDocuments({ user: order.user, couponCode: coupon.code,
-            couponReservationManaged: { $ne: true }, status: { $ne: 'cancelled' } });
+            couponReservationManaged: { $ne: true }, status: { $ne: 'cancelled' } }).session(session);
         const remaining = coupon.perUserLimit - historical;
         if (remaining <= 0) throw fail('You have reached the usage limit for this coupon.');
         filter.$expr = { $lt: [{ $size: { $filter: { input: { $ifNull: ['$redemptions', []] },
@@ -64,7 +64,7 @@ async function reserveCoupon(order, coupon) {
     }
     const reserved = await Coupon.findOneAndUpdate(filter, {
         $inc: { usedCount: 1 }, $push: { redemptions: { orderId: order._id, userId: order.user } }
-    }, { new: true });
+    }, { new: true, session });
     if (!reserved) throw fail('This coupon has reached its usage limit or is no longer available.', 409);
 }
 

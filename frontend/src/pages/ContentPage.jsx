@@ -20,11 +20,11 @@ const pages = {
     },
     '/shipping-policy': {
         title: 'Shipping Policy', intro: 'Clear delivery information for every order.',
-        sections: [['Processing', 'Custom products are made after the order is confirmed. Processing and delivery estimates are displayed with your order status.'], ['Tracking', 'When tracking details are available, they appear in the Track Order page.']]
+        sections: [['Delivery estimates before ordering', 'Custom products are made after order confirmation. Production time and delivery depend on your design, quantity and destination. Contact support with your PIN code, items and required date to request an estimate before paying; a delivery date is not guaranteed by this page.'], ['Shipping cost and service area', 'Review the shipping fee in your checkout total before placing your order. For delivery availability at your PIN code or bulk-order shipping, contact support before ordering.'], ['Track an existing order', 'Open Track Order with your order number and checkout email. Available carrier and tracking details appear there. If tracking is missing or delivery is delayed, contact support with your order number.']]
     },
     '/returns-exchanges': {
         title: 'Returns & Exchanges', intro: 'We want you to be happy with your order.',
-        sections: [['Before contacting us', 'Keep your order number and photos of the item ready so we can review your request quickly.'], ['Custom products', 'Because custom items are made specifically for you, eligibility may depend on the issue reported.']]
+        sections: [['Ask before purchasing', 'A standard return window and change-of-mind exchange policy are not published here yet. Before ordering, ask support to confirm the terms for your item, especially personalised products and size exchanges.'], ['Report a problem', 'Contact support with your order number, checkout email, a description of the issue and clear photos of the item and packaging. Explain whether you are requesting a replacement, exchange or refund.'], ['What happens next', 'Support will review your request and confirm eligibility, any applicable deadlines, return instructions, shipping costs and refund or replacement timing. Contact support before sending an item back so you have the correct instructions.']]
     },
     '/privacy-policy': {
         title: 'Privacy Policy', intro: 'How your account and order information is used.',
@@ -78,6 +78,7 @@ export default function ContentPage() {
                         <button className="btn btn-outline" disabled={busy} style={{ marginTop: 12 }}>{busy ? 'Updating…' : 'Unsubscribe'}</button>
                         {message && <p role="status">{message}</p>}
                     </form>}
+                    {['/shipping-policy', '/returns-exchanges'].includes(pathname) && <p><Link to="/support">Contact support about this policy</Link> · <Link to="/track-order">Track your order</Link></p>}
                     <div style={{ marginTop: '2rem' }}>
                         <Link to="/shop" className="btn btn-primary">Continue shopping</Link>
                     </div>

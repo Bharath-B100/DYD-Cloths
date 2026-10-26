@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { formatINR, formatDate } from '../utils/format';
 import API from '../config/api';
+import { productPrice } from '../utils/cart';
 import '../styles/profile.css';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -269,7 +270,7 @@ const Profile = () => {
                                     </div>
                                     <div className="product-info" onClick={() => navigate(`/product/${p._id || p.id}`)}>
                                         <h3>{p.name}</h3>
-                                        <p className="product-price">{formatINR(p.price)}</p>
+                                        <p className="product-price">{formatINR(productPrice(p))}</p>
                                     </div>
                                 </div>
                             ))}

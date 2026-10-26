@@ -1,3 +1,4 @@
+import AccessibleDialog from '../components/AccessibleDialog';
 // src/pages/AdminDashboard.jsx - Store Administrator Panel
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -1192,49 +1193,49 @@ const AdminDashboard = () => {
                                             <h2 style={{ margin: 0, fontSize: '1.6rem' }}><i className="fas fa-tshirt" style={{ color: 'var(--primary)', marginRight: '10px' }}></i>Products</h2>
                                             <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Manage product list, details, prices, and stock inventory.</p>
                                         </div>
-                                        <button className="btn btn-sm" onClick={() => setProductForm({ name: '', price: '', stock: '', sizes: 'S,M,L,XL', mainImage: '', category: '', description: '', isActive: true })} style={{ background: 'var(--gradient-primary)', color: '#fff', border: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center', width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
+                                        <button className="btn btn-sm" onClick={() => setProductForm({ name: '', price: '', stock: '', sizes: 'S,M,L,XL', mainImage: '', category: '', description: '', isActive: true })} style={{ background: 'var(--gradient-primary)', color: '#171300', border: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center', width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
                                             <i className="fas fa-plus"></i> Add Product
                                         </button>
                                     </div>
 
                                     {productForm && (
-                                        <div className={`admin-modal ${productForm ? 'active' : ''}`}>
+                                        <AccessibleDialog className={`admin-modal ${productForm ? 'active' : ''}`} aria-label="Product details" onClose={() => setProductForm(null)}>
                                             <div className="modal-content">
                                                 <div className="modal-header">
                                                     <h3 className="modal-title">{productForm._id ? 'Edit Product' : 'Add New Product'}</h3>
-                                                    <button className="modal-close" onClick={() => setProductForm(null)}>&times;</button>
+                                                    <button className="modal-close" aria-label="Close dialog" onClick={() => setProductForm(null)}>&times;</button>
                                                 </div>
                                                 <form onSubmit={handleProductSave}>
                                                     <div className="modal-body">
                                                         <div className="form-group">
-                                                            <label>Product Name</label>
-                                                            <input type="text" className="form-control" value={productForm.name} onChange={(e) => setProductForm({...productForm, name: e.target.value})} required />
+                                                            <label htmlFor="admindashboard-field-1">Product Name</label>
+                                                            <input id="admindashboard-field-1" type="text" className="form-control" value={productForm.name} onChange={(e) => setProductForm({...productForm, name: e.target.value})} required />
                                                         </div>
                                                         <div className="form-grid-2">
                                                             <div className="form-group">
-                                                                <label>Selling Price (₹)</label>
-                                                                <input type="number" min="0" step="0.01" className="form-control" value={productForm.price} onChange={(e) => setProductForm({...productForm, price: e.target.value})} required />
+                                                                <label htmlFor="admindashboard-field-2">Selling Price (₹)</label>
+                                                                <input id="admindashboard-field-2" type="number" min="0" step="0.01" className="form-control" value={productForm.price} onChange={(e) => setProductForm({...productForm, price: e.target.value})} required />
                                                             </div>
                                                             <div className="form-group">
-                                                                <label>Inventory Stock</label>
-                                                                <input type="number" min="0" step="1" className="form-control" value={productForm.stock} onChange={(e) => setProductForm({...productForm, stock: e.target.value})} required />
+                                                                <label htmlFor="admindashboard-field-3">Inventory Stock</label>
+                                                                <input id="admindashboard-field-3" type="number" min="0" step="1" className="form-control" value={productForm.stock} onChange={(e) => setProductForm({...productForm, stock: e.target.value})} required />
                                                             </div>
                                                         </div>
                                                         <div className="form-group">
-                                                            <label>Image URL</label>
-                                                            <input type="text" className="form-control" value={productForm.mainImage} onChange={(e) => setProductForm({...productForm, mainImage: e.target.value})} required />
+                                                            <label htmlFor="admindashboard-field-4">Image URL</label>
+                                                            <input id="admindashboard-field-4" type="text" className="form-control" value={productForm.mainImage} onChange={(e) => setProductForm({...productForm, mainImage: e.target.value})} required />
                                                         </div>
                                                         <div className="form-group">
-                                                            <label>Sizes (Comma separated)</label>
-                                                            <input type="text" className="form-control" value={productForm.sizes} onChange={(e) => setProductForm({...productForm, sizes: e.target.value})} required />
+                                                            <label htmlFor="admindashboard-field-5">Sizes (Comma separated)</label>
+                                                            <input id="admindashboard-field-5" type="text" className="form-control" value={productForm.sizes} onChange={(e) => setProductForm({...productForm, sizes: e.target.value})} required />
                                                         </div>
                                                         <div className="form-group">
-                                                            <label>Category</label>
-                                                            <input type="text" className="form-control" value={productForm.category} onChange={(e) => setProductForm({...productForm, category: e.target.value})} />
+                                                            <label htmlFor="admindashboard-field-6">Category</label>
+                                                            <input id="admindashboard-field-6" type="text" className="form-control" value={productForm.category} onChange={(e) => setProductForm({...productForm, category: e.target.value})} />
                                                         </div>
                                                         <div className="form-group">
-                                                            <label>Description</label>
-                                                            <textarea className="form-control" value={productForm.description} onChange={(e) => setProductForm({...productForm, description: e.target.value})} rows="3"></textarea>
+                                                            <label htmlFor="admindashboard-field-7">Description</label>
+                                                            <textarea id="admindashboard-field-7" className="form-control" value={productForm.description} onChange={(e) => setProductForm({...productForm, description: e.target.value})} rows="3"></textarea>
                                                         </div>
                                                         <label><input type="checkbox" checked={productForm.isActive !== false} onChange={e => setProductForm({ ...productForm, isActive: e.target.checked })} /> Visible in the shop</label>
                                                     </div>
@@ -1245,7 +1246,7 @@ const AdminDashboard = () => {
                                                     </div>
                                                 </form>
                                             </div>
-                                        </div>
+                                        </AccessibleDialog>
                                     )}
 
                                     <div className="table-container">
@@ -1363,43 +1364,43 @@ const AdminDashboard = () => {
                                             <h2 style={{ margin: 0, fontSize: '1.6rem' }}><i className="fas fa-ticket-alt" style={{ color: 'var(--primary)', marginRight: '10px' }}></i>Coupons</h2>
                                             <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Create, view, and manage promotional discount coupons.</p>
                                         </div>
-                                        <button className="btn btn-sm" onClick={() => setCouponForm({ code: '', discountType: 'percentage', discountValue: '', minimumOrderAmount: '', maximumDiscountAmount: '', endDate: '', isActive: true })} style={{ background: 'var(--gradient-primary)', color: '#fff', border: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center', width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
+                                        <button className="btn btn-sm" onClick={() => setCouponForm({ code: '', discountType: 'percentage', discountValue: '', minimumOrderAmount: '', maximumDiscountAmount: '', endDate: '', isActive: true })} style={{ background: 'var(--gradient-primary)', color: '#171300', border: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center', width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
                                             <i className="fas fa-plus"></i> Create Coupon
                                         </button>
                                     </div>
 
                                     {couponForm && (
-                                        <div className={`admin-modal ${couponForm ? 'active' : ''}`}>
+                                        <AccessibleDialog className={`admin-modal ${couponForm ? 'active' : ''}`} aria-label="Coupon details" onClose={() => setCouponForm(null)}>
                                             <div className="modal-content">
                                                 <div className="modal-header">
                                                     <h3 className="modal-title">{couponForm._id ? 'Edit Coupon' : 'Create Coupon'}</h3>
-                                                    <button className="modal-close" onClick={() => setCouponForm(null)}>&times;</button>
+                                                    <button className="modal-close" aria-label="Close dialog" onClick={() => setCouponForm(null)}>&times;</button>
                                                 </div>
                                                 <form onSubmit={handleCouponSave}>
                                                     <div className="modal-body">
                                                         <div className="form-group">
-                                                            <label>Coupon Code</label>
-                                                            <input type="text" className="form-control" value={couponForm.code} onChange={(e) => setCouponForm({...couponForm, code: e.target.value.toUpperCase()})} placeholder="e.g. WELCOME10" required />
+                                                            <label htmlFor="admindashboard-field-8">Coupon Code</label>
+                                                            <input id="admindashboard-field-8" type="text" className="form-control" value={couponForm.code} onChange={(e) => setCouponForm({...couponForm, code: e.target.value.toUpperCase()})} placeholder="e.g. WELCOME10" required />
                                                         </div>
                                                         <div className="form-grid-2">
                                                             <div className="form-group">
-                                                                <label>Discount Type</label>
-                                                                <select className="form-control" value={couponForm.discountType} onChange={(e) => setCouponForm({...couponForm, discountType: e.target.value})}>
+                                                                <label htmlFor="admindashboard-field-9">Discount Type</label>
+                                                                <select id="admindashboard-field-9" className="form-control" value={couponForm.discountType} onChange={(e) => setCouponForm({...couponForm, discountType: e.target.value})}>
                                                                     <option value="percentage">Percentage (%)</option>
                                                                     <option value="fixed">Flat Value (₹)</option>
                                                                 </select>
                                                             </div>
                                                             <div className="form-group">
-                                                                <label>Discount Value</label>
-                                                                <input type="number" min="0.01" step="0.01" max={couponForm.discountType === 'percentage' ? 100 : undefined} className="form-control" value={couponForm.discountValue} onChange={(e) => setCouponForm({...couponForm, discountValue: e.target.value})} required />
+                                                                <label htmlFor="admindashboard-field-10">Discount Value</label>
+                                                                <input id="admindashboard-field-10" type="number" min="0.01" step="0.01" max={couponForm.discountType === 'percentage' ? 100 : undefined} className="form-control" value={couponForm.discountValue} onChange={(e) => setCouponForm({...couponForm, discountValue: e.target.value})} required />
                                                             </div>
                                                         </div>
                                                         <div className="form-group">
-                                                            <label>Minimum Cart Total (₹)</label>
-                                                            <input type="number" min="0" step="0.01" className="form-control" value={couponForm.minimumOrderAmount} onChange={(e) => setCouponForm({...couponForm, minimumOrderAmount: e.target.value})} />
+                                                            <label htmlFor="admindashboard-field-11">Minimum Cart Total (₹)</label>
+                                                            <input id="admindashboard-field-11" type="number" min="0" step="0.01" className="form-control" value={couponForm.minimumOrderAmount} onChange={(e) => setCouponForm({...couponForm, minimumOrderAmount: e.target.value})} />
                                                         </div>
-                                                        <div className="form-group"><label>Maximum discount (₹, optional)</label><input type="number" min="0" step="0.01" className="form-control" value={couponForm.maximumDiscountAmount} onChange={e => setCouponForm({ ...couponForm, maximumDiscountAmount: e.target.value })} /></div>
-                                                        <div className="form-group"><label>Expires at</label><input type="datetime-local" className="form-control" value={couponForm.endDate} required onChange={e => setCouponForm({ ...couponForm, endDate: e.target.value })} /></div>
+                                                        <div className="form-group"><label htmlFor="admindashboard-field-12">Maximum discount (₹, optional)</label><input id="admindashboard-field-12" type="number" min="0" step="0.01" className="form-control" value={couponForm.maximumDiscountAmount} onChange={e => setCouponForm({ ...couponForm, maximumDiscountAmount: e.target.value })} /></div>
+                                                        <div className="form-group"><label htmlFor="admindashboard-field-13">Expires at</label><input id="admindashboard-field-13" type="datetime-local" className="form-control" value={couponForm.endDate} required onChange={e => setCouponForm({ ...couponForm, endDate: e.target.value })} /></div>
                                                         <label><input type="checkbox" checked={couponForm.isActive} onChange={e => setCouponForm({ ...couponForm, isActive: e.target.checked })} /> Active</label>
                                                     </div>
                                                     <div className="modal-footer">
@@ -1409,7 +1410,7 @@ const AdminDashboard = () => {
                                                     </div>
                                                 </form>
                                             </div>
-                                        </div>
+                                        </AccessibleDialog>
                                     )}
 
                                     <div className="table-container">
@@ -1457,7 +1458,7 @@ const AdminDashboard = () => {
                                             <h2 style={{ margin: 0, fontSize: '1.6rem' }}><i className="fas fa-tags" style={{ color: 'var(--primary)', marginRight: '10px' }}></i>Pricing Management</h2>
                                             <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Control studio costs and product discounts. Changes reflect instantly in the store.</p>
                                         </div>
-                                        <button className="btn btn-sm" onClick={handleSaveAllPricing} disabled={saving} style={{ background: 'var(--gradient-primary)', color: '#fff', border: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center', width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
+                                        <button className="btn btn-sm" onClick={handleSaveAllPricing} disabled={saving} style={{ background: 'var(--gradient-primary)', color: '#171300', border: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center', width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
                                             <i className="fas fa-save"></i> {saving ? 'Saving...' : 'Save All Changes'}
                                         </button>
                                     </div>
@@ -1802,7 +1803,7 @@ const AdminDashboard = () => {
                                             <h2 style={{ margin: 0, fontSize: '1.6rem' }}><i className="fas fa-cog" style={{ color: 'var(--primary)', marginRight: '10px' }}></i>Site Settings</h2>
                                             <p style={{ color: 'var(--text-muted)', margin: '4px 0 0' }}>Manage website content, branding, dynamic banners, and pricing rules.</p>
                                         </div>
-                                        <button type="submit" className="btn btn-sm" disabled={saving} style={{ background: 'var(--gradient-primary)', color: '#fff', border: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center', width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
+                                        <button type="submit" className="btn btn-sm" disabled={saving} style={{ background: 'var(--gradient-primary)', color: '#171300', border: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center', width: 'auto', flexShrink: 0, cursor: 'pointer' }}>
                                             <i className="fas fa-save"></i> {saving ? 'Saving...' : 'Save All Changes'}
                                         </button>
                                     </div>
@@ -1832,7 +1833,7 @@ const AdminDashboard = () => {
 
                                                 if (setting.type === 'textarea') {
                                                     inputElement = (
-                                                        <textarea 
+                                                        <textarea id={`setting-${key}`}
                                                             className="form-control" 
                                                             value={value} 
                                                             onChange={(e) => handleSettingsValueChange(key, e.target.value)} 
@@ -1842,7 +1843,7 @@ const AdminDashboard = () => {
                                                 } else if (setting.type === 'image') {
                                                     inputElement = (
                                                         <div className="settings-input-wrapper">
-                                                            <input 
+                                                            <input id={`setting-${key}`}
                                                                 type="text" 
                                                                 className="form-control" 
                                                                 value={value} 
@@ -1859,7 +1860,7 @@ const AdminDashboard = () => {
                                                 } else if (setting.type === 'color') {
                                                     inputElement = (
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                            <input 
+                                                            <input id={`setting-${key}`}
                                                                 type="color" 
                                                                 value={value || '#000000'} 
                                                                 onChange={(e) => handleSettingsValueChange(key, e.target.value)} 
@@ -1870,7 +1871,7 @@ const AdminDashboard = () => {
                                                     );
                                                 } else if (key === 'enable_cod' || key === 'promo_banner_show') {
                                                     inputElement = (
-                                                        <select 
+                                                        <select id={`setting-${key}`}
                                                             className="form-control" 
                                                             value={String(value)} 
                                                             onChange={(e) => handleSettingsValueChange(key, e.target.value)}
@@ -1881,7 +1882,7 @@ const AdminDashboard = () => {
                                                     );
                                                 } else {
                                                     inputElement = (
-                                                        <input 
+                                                        <input id={`setting-${key}`}
                                                             type={setting.type === 'number' ? 'number' : 'text'} 
                                                             className="form-control" 
                                                             value={value} 
@@ -1892,7 +1893,7 @@ const AdminDashboard = () => {
 
                                                 return (
                                                     <div key={key} className="settings-item">
-                                                        <label>{setting.label}</label>
+                                                        <label htmlFor={`setting-${key}`}>{setting.label}</label>
                                                         {inputElement}
                                                     </div>
                                                 );
@@ -1907,11 +1908,11 @@ const AdminDashboard = () => {
             
             {/* Order Details Modal */}
             {selectedOrder && (
-                <div className="admin-modal active">
+                <AccessibleDialog className="admin-modal active" aria-label="Order details" onClose={() => setSelectedOrder(null)}>
                     <div className="modal-content order-modal-large" style={{ maxWidth: '850px' }}>
                         <div className="modal-header">
                             <h3 className="modal-title">Order Details</h3>
-                            <button className="modal-close" onClick={() => setSelectedOrder(null)}>&times;</button>
+                            <button className="modal-close" aria-label="Close dialog" onClick={() => setSelectedOrder(null)}>&times;</button>
                         </div>
                         <div className="modal-body">
                             <div className="order-detail-header" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '15px', marginBottom: '15px' }}>
@@ -2045,7 +2046,7 @@ const AdminDashboard = () => {
                             <button className="btn btn-primary" onClick={() => setSelectedOrder(null)}>Close</button>
                         </div>
                     </div>
-                </div>
+                </AccessibleDialog>
             )}
 
             {/* Custom Design Previews Lightbox */}
@@ -2107,8 +2108,8 @@ const AdminDashboard = () => {
                     };
 
                     return (
-                        <div className="design-lightbox active">
-                            <button className="lightbox-close-btn" onClick={() => setSelectedItemForDesign(null)}>&times;</button>
+                        <AccessibleDialog className="design-lightbox active" aria-label="Design preview" onClose={() => setSelectedItemForDesign(null)}>
+                            <button className="lightbox-close-btn" aria-label="Close design preview" onClick={() => setSelectedItemForDesign(null)}>&times;</button>
                             <div className="lightbox-content">
                                 <h3 className="lightbox-title">{item.name} – Design Preview</h3>
                                 
@@ -2168,7 +2169,7 @@ const AdminDashboard = () => {
                                     )}
                                 </div>
                             </div>
-                        </div>
+                        </AccessibleDialog>
                     );
                 })()
             )}

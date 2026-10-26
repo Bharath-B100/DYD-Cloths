@@ -1,26 +1,22 @@
 // src/pages/Shop.jsx - Catalog Collection Shop Page
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import API from '../config/api';
 import ProductCard from '../components/ProductCard';
-import { productPrice } from '../utils/cart';
 import '../styles/shop.css';
 
 const parseFilterValues = (value) => value
     ? value.split(',').map(item => item.trim().toLowerCase()).filter(Boolean)
     : [];
 
-const normalizeProductValues = (value) => Array.isArray(value)
-    ? value.map(item => String(item).toLowerCase())
-    : parseFilterValues(typeof value === 'string' ? value : '');
-
 const Shop = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const [allProducts, setAllProducts] = useState([]);
+    const [catalog, setCatalog] = useState({ products: [], total: 0, page: 1, pages: 1 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [reload, setReload] = useState(0);
     const resultsRef = useRef(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const searchQuery = searchParams.get('search') || '';
     const selectedTypes = parseFilterValues(searchParams.get('type') || searchParams.get('productTypes'));
     const selectedCategories = parseFilterValues(searchParams.get('category'));
@@ -39,102 +35,30 @@ const Shop = () => {
     const setSelectedPriceRange = value => setFilter('price', value);
     const setSelectedSort = value => setFilter('sort', value);
 
+    const requestParams = new URLSearchParams(searchParams);
+    if (selectedTypes.length) requestParams.set('type', selectedTypes.join(','));
+    if (selectedCatalogs.length) requestParams.set('catalog', selectedCatalogs.join(','));
+    requestParams.delete('productTypes');
+    requestParams.delete('catalogTypes');
+    requestParams.set('limit', '12');
+    const requestQuery = requestParams.toString();
     useEffect(() => {
         let cancelled = false;
+        const controller = new AbortController();
         setLoading(true);
         setError('');
-        const fetchAll = async () => {
-            try {
-                let page = 1;
-                let totalPages = 1;
-                const products = [];
-                do {
-                    const res = await API.get(`/products?page=${page}&limit=100`);
-                    if (cancelled) return;
-                    if (!res.success) throw new Error(res.error || 'Unable to load products.');
-                    const batch = res.data?.products || res.data?.data || res.data;
-                    if (!Array.isArray(batch)) throw new Error('The catalog response was invalid.');
-                    products.push(...batch);
-                    totalPages = Number(res.totalPages ?? res.data?.totalPages ?? 1);
-                    if (batch.length === 0) break;
-                    page++;
-                } while (page <= totalPages);
-                setAllProducts(Array.from(new Map(products.map(product => [product._id || product.id, product])).values()));
-            } catch (err) {
-                if (!cancelled) setError(err.message || 'Unable to load the catalog.');
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        };
-        fetchAll();
-        return () => { cancelled = true; };
-    }, [reload]);
-
-    // Apply filter/sort whenever products or filter selections update
-    const filteredProducts = useMemo(() => {
-        let result = [...allProducts];
-
-        // Search match
-        if (searchQuery.trim()) {
-            const sq = searchQuery.trim().toLowerCase();
-            result = result.filter(p => 
-                (p.name && p.name.toLowerCase().includes(sq)) || 
-                (p.category && p.category.toLowerCase().includes(sq)) ||
-                (p.description && p.description.toLowerCase().includes(sq)) ||
-                normalizeProductValues(p.tags).some(tag => tag.includes(sq))
-            );
-        }
-
-        // Product Types match
-        if (selectedTypes.length > 0) {
-            result = result.filter(p => 
-                normalizeProductValues(p.productTypes).some(type => selectedTypes.includes(type))
-            );
-        }
-
-        // Category match
-        if (selectedCategories.length > 0) {
-            result = result.filter(p => 
-                p.category && selectedCategories.includes(p.category.toLowerCase())
-            );
-        }
-
-        // Legacy catalog pages use catalogTypes (oversized, premium-cotton, bulk-cotton).
-        if (selectedCatalogs.length > 0) {
-            result = result.filter(p =>
-                normalizeProductValues(p.catalogTypes).some(catalog => selectedCatalogs.includes(catalog))
-            );
-        }
-
-        // Price range match
-        if (selectedPriceRange !== 'all') {
-            result = result.filter(p => {
-                const price = productPrice(p);
-                if (selectedPriceRange === 'under-500') return price < 500;
-                if (selectedPriceRange === '500-1000') return price >= 500 && price <= 1000;
-                if (selectedPriceRange === 'over-1000') return price > 1000;
-                return true;
-            });
-        }
-
-        // Sort match
-        if (selectedSort === 'low') {
-            result.sort((a, b) => productPrice(a) - productPrice(b));
-        } else if (selectedSort === 'high') {
-            result.sort((a, b) => productPrice(b) - productPrice(a));
-        } else if (selectedSort === 'new') {
-            result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        } else if (selectedSort === 'popular') {
-            result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        }
-
-        return result;
-    }, [allProducts, searchQuery, selectedTypes, selectedCategories, selectedCatalogs, selectedPriceRange, selectedSort]);
-
-    const pageSize = 12;
-    const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
-    const currentPage = Math.min(pageCount, Math.max(1, Number.parseInt(searchParams.get('page'), 10) || 1));
-    const visibleProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+        API.get(`/products?${requestQuery}`, { signal: controller.signal }).then(res => {
+            if (cancelled) return;
+            if (!res.success || !Array.isArray(res.data)) throw new Error(res.error || 'The catalog response was invalid.');
+            setCatalog({ products: res.data, total: res.total, page: res.currentPage, pages: Math.max(1, res.totalPages) });
+        }).catch(err => {
+            if (!cancelled) setError(err.message || 'Unable to load the catalog.');
+        }).finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; controller.abort(); };
+    }, [requestQuery, reload]);
+    const visibleProducts = catalog.products;
+    const pageCount = catalog.pages;
+    const currentPage = catalog.page;
     const changePage = page => {
         setSearchParams(previous => {
             const next = new URLSearchParams(previous);
@@ -159,7 +83,8 @@ const Shop = () => {
 
             <div className="shop-container">
                 {/* Filters Sidebar */}
-                <aside className="filters-sidebar">
+                <button className="btn btn-outline mobile-filter-toggle" aria-expanded={filtersOpen} aria-controls="catalog-filters" onClick={() => setFiltersOpen(!filtersOpen)}>{filtersOpen ? 'Hide filters' : 'Show filters'} ({selectedTypes.length + selectedCategories.length + selectedCatalogs.length + (selectedPriceRange !== 'all' ? 1 : 0)})</button>
+                <aside id="catalog-filters" className={`filters-sidebar ${filtersOpen ? 'filters-open' : ''}`}>
                     <div className="filter-section">
                         <h3>Storefront Categories</h3>
                         <div className="filter-options">
@@ -273,7 +198,7 @@ const Shop = () => {
                 <div className="shop-content" ref={resultsRef} aria-busy={loading}>
                     <div className="shop-header">
                         <p>
-                            {loading ? 'Loading products…' : error ? 'Catalog unavailable' : <>{searchQuery ? `Results for “${searchQuery}”: ` : 'Showing '}<span className="count-badge">{filteredProducts.length}</span> Products</>}
+                            {loading ? 'Loading products…' : error ? 'Catalog unavailable' : <>{searchQuery ? `Results for “${searchQuery}”: ` : 'Showing '}<span className="count-badge">{catalog.total}</span> Products</>}
                         </p>
                         <div className="sort-wrapper">
                             <label htmlFor="sortSelect">Sort by:</label>
@@ -300,7 +225,7 @@ const Shop = () => {
                             {visibleProducts.map(prod => (
                                 <ProductCard key={prod._id || prod.id} product={prod} />
                             ))}
-                            {filteredProducts.length === 0 && (
+                            {catalog.total === 0 && (
                                 <div className="no-results">
                                     <i className="fas fa-search fa-3x" style={{ opacity: 0.3, marginBottom: '16px' }}></i>
                                     <p>No products found matching your criteria.</p>

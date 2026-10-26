@@ -1,6 +1,7 @@
 // Module-download failures happen before React's error boundary can mount.
 import('./main.jsx').catch(error => {
     console.error('Store startup failed:', error);
+    document.getElementById('pre-splash')?.remove();
     const root = document.getElementById('root');
     const message = document.createElement('p');
     message.textContent = 'The store could not load. Please reload the page or try again shortly.';

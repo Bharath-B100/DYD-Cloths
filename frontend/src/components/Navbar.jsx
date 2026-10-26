@@ -17,6 +17,7 @@ const Navbar = ({ onOpenCart }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [suggestions, setSuggestions] = useState([]);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
     
     const searchRef = useRef(null);
@@ -35,6 +36,7 @@ const Navbar = ({ onOpenCart }) => {
     // Close mobile menu on page transition
     useEffect(() => {
         setMobileMenuOpen(false);
+        setSearchOpen(false);
         setShowSuggestions(false);
     }, [location.pathname, location.search]);
 
@@ -75,10 +77,11 @@ const Navbar = ({ onOpenCart }) => {
     };
 
     return (
-        <nav className={`navbar ${mobileMenuOpen ? 'menu-open' : ''}`} onKeyDown={event => {
+        <nav className={`navbar ${mobileMenuOpen ? 'menu-open' : ''} ${searchOpen ? 'search-open' : ''}`} onKeyDown={event => {
             if (event.key === 'Escape') {
                 setMobileMenuOpen(false);
-                event.currentTarget.querySelector('.menu-toggle')?.focus();
+                setSearchOpen(false);
+                event.currentTarget.querySelector(searchOpen ? '.mobile-shopping-actions button' : '.menu-toggle')?.focus();
             }
         }}>
             <div className="nav-container">
@@ -90,7 +93,7 @@ const Navbar = ({ onOpenCart }) => {
                 </Link>
 
                 {/* Search Bar */}
-                <div className="search-wrapper" ref={searchRef}>
+                <div id="product-search" className="search-wrapper" ref={searchRef}>
                     <form className="site-search" onSubmit={handleSearchSubmit} style={{ width: '100%', position: 'relative' }}>
                         <i className="fas fa-search" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#666' }}></i>
                         <input 
@@ -126,6 +129,10 @@ const Navbar = ({ onOpenCart }) => {
                     )}
                 </div>
 
+                <div className="mobile-shopping-actions">
+                    <button type="button" aria-label="Search products" aria-expanded={searchOpen} aria-controls="product-search" onClick={() => { setSearchOpen(!searchOpen); setMobileMenuOpen(false); if (!searchOpen) requestAnimationFrame(() => searchRef.current?.querySelector('input')?.focus()); }}><i className="fas fa-search" /></button>
+                    <button type="button" aria-label={`Open cart, ${getCartCount()} items`} onClick={onOpenCart}><i className="fas fa-shopping-cart" /><span>{getCartCount()}</span></button>
+                </div>
                 {/* Mobile Menu Toggle */}
                 <button className="menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle navigation" aria-expanded={mobileMenuOpen} aria-controls="storefront-navigation">
                     <i className={`fas ${mobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>

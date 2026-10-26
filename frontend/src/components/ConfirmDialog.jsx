@@ -1,10 +1,11 @@
+import AccessibleDialog from './AccessibleDialog';
 import React from 'react';
 import '../styles/main.css';
 import '../styles/product.css';
 
 export default function ConfirmDialog({ title = 'Please confirm', message, onCancel, onConfirm, confirmLabel = 'Confirm' }) {
     return (
-        <div className="modal active" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+        <AccessibleDialog className="modal active" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" onClose={onCancel}>
             <div className="modal-content">
                 <h3 id="confirm-dialog-title">{title}</h3>
                 <p style={{ margin: '16px 0 24px' }}>{message}</p>
@@ -13,7 +14,7 @@ export default function ConfirmDialog({ title = 'Please confirm', message, onCan
                     <button type="button" className="btn btn-primary" onClick={onConfirm}>{confirmLabel}</button>
                 </div>
             </div>
-        </div>
+        </AccessibleDialog>
     );
 }
 

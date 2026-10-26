@@ -121,7 +121,7 @@ couponSchema.methods.isValid = async function(cartTotal, userId, items = []) {
             user: userId,
             couponCode: this.code,
             status: { $ne: 'cancelled' }
-        });
+        }).session(this.$session());
         if (existingCount >= this.perUserLimit) {
             return { valid: false, message: 'You have reached the usage limit for this coupon' };
         }

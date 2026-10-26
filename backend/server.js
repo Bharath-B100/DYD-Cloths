@@ -217,7 +217,12 @@ app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/__')) {
         return next();
     }
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+    const { isStorefrontRoute } = require('./utils/storefrontRoutes');
+    const knownRoute = isStorefrontRoute(req.path);
+    if (!knownRoute && path.extname(req.path) && !req.path.endsWith('.html')) {
+        return res.status(404).type('text').send('Not found');
+    }
+    res.status(knownRoute ? 200 : 404).sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 // Error handling middleware

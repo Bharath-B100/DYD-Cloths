@@ -1,3 +1,4 @@
+import AccessibleDialog from '../components/AccessibleDialog';
 // src/pages/ProductDetail.jsx - Detailed Product View, Reviews & Size Guide
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -352,9 +353,10 @@ const ProductDetail = () => {
                 <div className="product-main-grid">
                     {/* Gallery */}
                     <div className="product-gallery">
-                        <div className="product-gallery-viewport" style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setLightboxOpen(true)}>
+                        <div className="product-gallery-viewport" style={{ position: 'relative', cursor: 'zoom-in' }} >
                             <img src={activeImage || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600'} alt={product.name} className="main-image" style={{ width: '100%', height: 'auto', borderRadius: '12px' }} />
                             
+                            <button type="button" className="gallery-enlarge" aria-label="Enlarge product image" onClick={() => setLightboxOpen(true)} />
                             {/* Zoom prompt icon */}
                             <div style={{ position: 'absolute', bottom: '15px', right: '15px', background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '6px 12px', borderRadius: '20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'none' }}>
                                 <i className="fas fa-expand-arrows-alt"></i> Click to enlarge
@@ -435,7 +437,7 @@ const ProductDetail = () => {
                         <div className="product-thumbnails">
                             {allImages.map((url, idx) => (
                                 <button 
-                                    key={idx} 
+                                    key={idx} aria-label={`View product image ${idx + 1}`} aria-pressed={activeImage === url}
                                     className={`thumb-btn ${activeImage === url ? 'active' : ''}`}
                                     onClick={() => setActiveImage(url)}
                                 >
@@ -604,9 +606,8 @@ const ProductDetail = () => {
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label>Comment</label>
-                                        <textarea 
-                                            value={reviewComment}
+                                        <label htmlFor="productdetail-field-1">Comment</label>
+                                        <textarea id="productdetail-field-1" value={reviewComment}
                                             onChange={(e) => setReviewComment(e.target.value)}
                                             className="form-control" 
                                             rows="4" 
@@ -615,9 +616,8 @@ const ProductDetail = () => {
                                         ></textarea>
                                     </div>
                                     <div className="form-group">
-                                        <label>Upload Images (Optional)</label>
-                                        <input 
-                                            type="file" 
+                                        <label htmlFor="productdetail-field-2">Upload Images (Optional)</label>
+                                        <input id="productdetail-field-2" type="file"
                                             ref={fileInputRef}
                                             onChange={handleFileChange}
                                             className="form-control" 
@@ -659,7 +659,7 @@ const ProductDetail = () => {
                                         {r.images?.length > 0 && (
                                             <div className="review-images">
                                                 {r.images.map((img, idx) => (
-                                                    <img key={idx} src={img.url} alt="Review attachment" className="review-image" onClick={() => window.open(img.url, '_blank')} />
+                                                    <img key={idx} aria-label={`View product image ${idx + 1}`} aria-pressed={activeImage === url} src={img.url} alt="Review attachment" className="review-image" onClick={() => window.open(img.url, '_blank')} />
                                                 ))}
                                             </div>
                                         )}
@@ -703,9 +703,9 @@ const ProductDetail = () => {
             {/* Size Guide Calculator Modal */}
             {isSizeGuideOpen && (
                 <>
-                    <div className="modal active" id="sizeGuideModal" style={{ display: 'flex' }}>
+                    <AccessibleDialog className="modal active" id="sizeGuideModal" style={{ display: 'flex' }} aria-label="Interactive Size Guide" onClose={() => setIsSizeGuideOpen(false)}>
                         <div className="modal-content">
-                            <button className="close-modal" onClick={() => setIsSizeGuideOpen(false)}>
+                            <button className="close-modal" aria-label="Close size guide" onClick={() => setIsSizeGuideOpen(false)}>
                                 <i className="fas fa-times"></i>
                             </button>
                             <h2>Interactive Size Guide</h2>
@@ -713,9 +713,8 @@ const ProductDetail = () => {
                             
                             <form className="size-guide-form" onSubmit={handleSizeRecommendation}>
                                 <div className="form-group">
-                                    <label>Height (cm)</label>
-                                    <input 
-                                        type="number" 
+                                    <label htmlFor="productdetail-field-3">Height (cm)</label>
+                                    <input id="productdetail-field-3" type="number"
                                         className="form-control" 
                                         placeholder="e.g. 175" 
                                         value={height}
@@ -724,9 +723,8 @@ const ProductDetail = () => {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label>Weight (kg)</label>
-                                    <input 
-                                        type="number" 
+                                    <label htmlFor="productdetail-field-4">Weight (kg)</label>
+                                    <input id="productdetail-field-4" type="number"
                                         className="form-control" 
                                         placeholder="e.g. 70" 
                                         value={weight}
@@ -735,9 +733,8 @@ const ProductDetail = () => {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label>Fit Preference</label>
-                                    <select 
-                                        className="form-control" 
+                                    <label htmlFor="productdetail-field-5">Fit Preference</label>
+                                    <select id="productdetail-field-5" className="form-control"
                                         value={fit}
                                         onChange={(e) => setFit(e.target.value)}
                                     >
@@ -757,14 +754,14 @@ const ProductDetail = () => {
                                 )}
                             </form>
                         </div>
-                    </div>
+                    </AccessibleDialog>
                     <div className="modal-backdrop" onClick={() => setIsSizeGuideOpen(false)} style={{ display: 'block' }}></div>
                 </>
             )}
 
             {/* Lightbox / Fullscreen Image Viewer Modal */}
             {lightboxOpen && (
-                <div style={{
+                <AccessibleDialog aria-label="Product image viewer" onClose={() => setLightboxOpen(false)} style={{
                     position: 'fixed',
                     top: 0,
                     left: 0,
@@ -858,7 +855,7 @@ const ProductDetail = () => {
                             {product.name} — {allImages.indexOf(activeImage) + 1} of {allImages.length}
                         </div>
                     </div>
-                </div>
+                </AccessibleDialog>
             )}
         </div>
     );
