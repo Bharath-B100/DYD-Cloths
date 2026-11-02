@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const emailService = require('../services/email');
 const { quoteCheckout, requiredText, fail, isProductId } = require('../services/checkout');
 const { transitionOrder, reserveInventory, reserveCoupon } = require('../services/orderLifecycle');
 
@@ -61,6 +62,13 @@ const createOrder = async (req, res) => {
             await reserveCoupon(order, coupon, session);
             await order.save({ session });
         });
+        // Send only after commit, never inside the retryable transaction.
+        // Idempotent checkout replays return above without sending again.
+        try {
+            await emailService.sendOrderConfirmation(order);
+        } catch {
+            console.error('Order confirmation email failed for order', order.orderNumber);
+        }
         return res.status(201).json({ success: true, message: 'Order created successfully', data: formatOrder(order) });
     } catch (error) {
         if (error.code === 11000 && req.body.requestId) {

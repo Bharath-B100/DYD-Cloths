@@ -406,10 +406,13 @@ const resetPassword = async (req, res) => {
         if (password !== passwordConfirm) {
             return res.status(400).json({
                 success: false,
-                error: 'Passwords do not match'
+                code: 'PASSWORD_MISMATCH',
+                error: 'The passwords do not match. Enter the same password in both fields.'
             });
         }
         
+        if (password.length < 6) return res.status(400).json({ success: false, code: 'PASSWORD_TOO_SHORT', error: 'Choose a password with at least 6 characters.' });
+
         // Hash the token to compare with stored hash
         const hashedToken = crypto
             .createHash('sha256')
@@ -425,7 +428,8 @@ const resetPassword = async (req, res) => {
         if (!user || !user.isActive || !user.emailVerified) {
             return res.status(400).json({
                 success: false,
-                error: 'Token is invalid or has expired'
+                code: 'RESET_LINK_INVALID',
+                error: 'This reset link has expired or is no longer valid. Request a new link.'
             });
         }
         

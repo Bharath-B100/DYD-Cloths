@@ -42,4 +42,6 @@ const sendEmailVerification = async (email, token) => {
     await sendEmail(email, content);
 };
 
-module.exports = { isConfigured, sendPasswordReset, sendEmailVerification };
+const sendOrderConfirmation = async order => sendEmail(order.customer.email, require('./orderConfirmationEmail').orderConfirmationEmail(order, process.env.PUBLIC_SITE_URL));
+
+module.exports = { isConfigured, sendPasswordReset, sendEmailVerification, sendOrderConfirmation };

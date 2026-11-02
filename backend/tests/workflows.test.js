@@ -50,7 +50,8 @@ before(async () => {
     await Promise.all([Product.init(), Coupon.init(), Order.init(), User.init()]);
 });
 after(async () => { await mongoose.disconnect(); if (mongod && !mongod.killed) mongod.kill(); });
-beforeEach(async () => {
+beforeEach(async t => {
+    t.mock.method(require('../services/email'), 'sendOrderConfirmation', async () => {});
     assert.equal(mongoose.connection.name, 'dyd_isolated_tests');
     await Promise.all([Product.deleteMany({}), Coupon.deleteMany({}), Order.deleteMany({}), User.deleteMany({})]);
 });
@@ -168,4 +169,22 @@ test('verification expires, resend has a cooldown, and delivery failure can be r
     const pending = await User.findById(user.id).select('+emailVerificationToken +emailVerificationSentAt');
     assert.equal(pending.emailVerificationToken, undefined); assert.equal(pending.emailVerificationSentAt, undefined); assert.equal(pending.emailVerified, false);
     const unknown = response(); await verification.resendVerification({ body: { email: 'unknown@example.test' } }, unknown); assert.equal(unknown.statusCode, 200);
+});
+
+test('order email sends after commit once; delivery failure does not undo checkout', async t => {
+    const email = require('../services/email');
+    let calls = 0;
+    t.mock.method(email, 'sendOrderConfirmation', async order => {
+        calls++;
+        assert.ok(await Order.findById(order._id), 'Order must be committed before email');
+        throw new Error('Simulated mail failure');
+    });
+    const product = await Product.create(productData);
+    const req = request(product);
+    const first = response(); await createOrder(req, first);
+    assert.equal(first.statusCode, 201);
+    const retry = response(); await createOrder(req, retry);
+    assert.equal(retry.statusCode, 200);
+    assert.equal(calls, 1);
+    assert.equal(await Order.countDocuments(), 1);
 });
