@@ -2,8 +2,24 @@ const nodemailer = require('nodemailer');
 const { passwordResetEmail } = require('./passwordResetEmail');
 
 const gmail = require('./gmailDelivery').createGmailDelivery();
-const provider = () => process.env.EMAIL_PROVIDER || 'smtp';
-const isConfigured = () => Boolean(process.env.PUBLIC_SITE_URL && (provider() === 'gmail' ? gmail.configured() : provider() === 'smtp' && process.env.SMTP_HOST && process.env.SMTP_FROM));
+const provider = () => {
+    const configured = (process.env.EMAIL_PROVIDER || '').trim().toLowerCase();
+    if (configured) return configured;
+    if (process.env.RESEND_API_KEY) return 'resend';
+    if (process.env.BREVO_API_KEY) return 'brevo';
+    if (process.env.GMAIL_REFRESH_TOKEN) return 'gmail';
+    return 'smtp';
+};
+
+const isConfigured = () => {
+    if (!process.env.PUBLIC_SITE_URL) return false;
+    const p = provider();
+    if (p === 'resend') return Boolean(process.env.RESEND_API_KEY);
+    if (p === 'brevo') return Boolean(process.env.BREVO_API_KEY);
+    if (p === 'gmail') return gmail.configured();
+    if (p === 'smtp') return Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM);
+    return false;
+};
 
 const sendPasswordReset = async (email, token) => {
     if (!isConfigured()) throw new Error('Email delivery is not configured');
@@ -15,7 +31,56 @@ const sendPasswordReset = async (email, token) => {
 
 const sendEmail = async (email, content) => {
     if (!isConfigured()) throw new Error('Email delivery is not configured');
-    if (provider() === 'gmail') return gmail.send(email, content);
+    const p = provider();
+
+    if (p === 'resend') {
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            signal: AbortSignal.timeout(15000),
+            headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                from: process.env.RESEND_FROM || 'DYD-Clothes <onboarding@resend.dev>',
+                to: [email],
+                subject: content.subject,
+                html: content.html,
+                text: content.text
+            })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(`Resend delivery failed (HTTP ${response.status}): ${result.message || JSON.stringify(result)}`);
+        }
+        return { id: result.id };
+    }
+
+    if (p === 'brevo') {
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            signal: AbortSignal.timeout(15000),
+            headers: {
+                'api-key': process.env.BREVO_API_KEY.trim(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: { name: 'DYD-Clothes', email: process.env.BREVO_SENDER || process.env.SMTP_USER || 'dydclothes.admin@gmail.com' },
+                to: [{ email }],
+                subject: content.subject,
+                htmlContent: content.html,
+                textContent: content.text
+            })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(`Brevo delivery failed (HTTP ${response.status}): ${result.message || JSON.stringify(result)}`);
+        }
+        return { id: result.messageId };
+    }
+
+    if (p === 'gmail') return gmail.send(email, content);
+
     const port = Number(process.env.SMTP_PORT || 587);
     const transport = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
