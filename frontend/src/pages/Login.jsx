@@ -57,6 +57,8 @@ const Login = () => {
             console.error('Google sign-in failed:', err);
             const msg = err.code === 'auth/popup-closed-by-user'
                 ? 'Sign-in cancelled'
+                : err.code === 'auth/popup-blocked'
+                ? 'Pop-up was blocked by your browser. Click the pop-up icon in your address bar to allow pop-ups, then try again.'
                 : err.message || 'Google Sign-In failed';
             setError(msg);
         } finally {
