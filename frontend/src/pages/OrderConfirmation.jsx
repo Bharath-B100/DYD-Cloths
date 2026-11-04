@@ -11,6 +11,14 @@ const OrderConfirmation = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [reload, setReload] = useState(0);
+    const [emailBusy, setEmailBusy] = useState(false);
+    const [emailFeedback, setEmailFeedback] = useState('');
+    const resendEmail = async () => {
+        setEmailBusy(true);
+        try { const result = await API.post(`/orders/${orderId}/confirmation-email`, {}); setEmailFeedback(result.message); }
+        catch (error) { setEmailFeedback(typeof error.data?.error === 'string' ? error.data.error : 'We could not send the email. Your order is saved. Please try again later.'); }
+        finally { setEmailBusy(false); }
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -71,6 +79,7 @@ const OrderConfirmation = () => {
             
             <h1>{order.status === 'cancelled' ? 'Order Cancelled' : 'Order Received!'}</h1>
             <p style={{ color: 'var(--text-muted)' }}>{order.status === 'cancelled' ? 'This order has been cancelled. See your account for payment and refund details.' : 'Thank you for your purchase. Keep your order number to track its progress.'}</p>
+            {order.status !== 'cancelled' && <section style={{ marginTop: 20 }}><p>{order.confirmationEmail?.status === 'sent' ? 'Confirmation submitted for delivery to' : order.confirmationEmail?.status === 'failed' ? 'Your order is saved, but email delivery failed. Recipient:' : 'Confirmation email recipient:'} {order.customer?.email}</p><button className="btn btn-outline" disabled={emailBusy} onClick={resendEmail}>{emailBusy ? 'Sending…' : 'Resend order confirmation'}</button>{emailFeedback && <p role="status">{emailFeedback}</p>}</section>}
             {order.status === 'cancelled' && order.cancelReason && (
                 <p style={{ color: '#ef4444', fontWeight: 'bold', marginTop: '10px' }}>Reason: {order.cancelReason}</p>
             )}
@@ -139,7 +148,7 @@ const OrderConfirmation = () => {
                 <Link to="/profile?tab=orders" className="btn btn-outline">
                     <i className="fas fa-list"></i> View My Orders
                 </Link>
-                {order.orderNumber && <Link to={`/track-order?order=${encodeURIComponent(order.orderNumber)}`} className="btn btn-outline">Track Order</Link>}
+                {order.orderNumber && <Link to={`/track-order?orderNumber=${encodeURIComponent(order.orderNumber)}&email=${encodeURIComponent(order.customer?.email || '')}`} className="btn btn-outline">Track Order</Link>}
             </div>
         </div>
     );

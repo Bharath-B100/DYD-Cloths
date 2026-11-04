@@ -9,14 +9,78 @@ const stages = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
 export default function TrackOrder() {
     const { user } = useAuth();
     const [searchParams] = useSearchParams();
-    const [orderNumber, setOrderNumber] = useState(() => (
-        searchParams.get('order') || searchParams.get('orderNumber') || ''
-    ));
-    const [email, setEmail] = useState(user?.email || '');
+
+    const getInitialOrder = () => {
+        const fromQuery = searchParams.get('order') || searchParams.get('orderNumber');
+        if (fromQuery) return fromQuery;
+        try {
+            return sessionStorage.getItem('latestOrderNumber') || '';
+        } catch {
+            return '';
+        }
+    };
+
+    const getInitialEmail = () => {
+        const fromQuery = searchParams.get('email');
+        if (fromQuery) return fromQuery;
+        if (user?.email) return user.email;
+        try {
+            return sessionStorage.getItem('latestOrderEmail') || '';
+        } catch {
+            return '';
+        }
+    };
+
+    const [orderNumber, setOrderNumber] = useState(getInitialOrder);
+    const [email, setEmail] = useState(getInitialEmail);
     const [order, setOrder] = useState(null);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
-    useEffect(() => { setOrderNumber(searchParams.get('order') || searchParams.get('orderNumber') || ''); setOrder(null); }, [searchParams]);
+
+    useEffect(() => {
+        const queryOrder = searchParams.get('order') || searchParams.get('orderNumber');
+        const queryEmail = searchParams.get('email');
+
+        if (queryOrder) {
+            setOrderNumber(queryOrder);
+        }
+        if (queryEmail) {
+            setEmail(queryEmail);
+        } else if (user?.email) {
+            setEmail(prev => prev || user.email);
+        }
+        setOrder(null);
+    }, [searchParams, user]);
+
+    useEffect(() => {
+        if (orderNumber) return;
+
+        try {
+            const savedOrder = sessionStorage.getItem('latestOrderNumber');
+            const savedEmail = sessionStorage.getItem('latestOrderEmail');
+            if (savedOrder) {
+                setOrderNumber(savedOrder);
+                if (savedEmail) setEmail(prev => prev || savedEmail);
+                return;
+            }
+        } catch {}
+
+        if (user) {
+            let active = true;
+            API.get('/auth/orders')
+                .then(res => {
+                    if (!active) return;
+                    const ordersData = res.data?.orders || res.data?.data || res.data || [];
+                    const list = Array.isArray(ordersData) ? ordersData : [];
+                    if (list.length > 0 && list[0].orderNumber) {
+                        setOrderNumber(prev => prev || list[0].orderNumber);
+                        setEmail(prev => prev || user.email || '');
+                    }
+                })
+                .catch(() => {});
+            return () => { active = false; };
+        }
+    }, [user, orderNumber]);
     const trackOrder = async (event) => {
         event.preventDefault();
         setMessage(''); setOrder(null);

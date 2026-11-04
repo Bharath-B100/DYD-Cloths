@@ -1,5 +1,5 @@
 const Order = require('../models/Order');
-const emailService = require('../services/email');
+const { deliverOrderConfirmation } = require('../services/orderEmailDelivery');
 const { quoteCheckout, requiredText, fail, isProductId } = require('../services/checkout');
 const { transitionOrder, reserveInventory, reserveCoupon } = require('../services/orderLifecycle');
 
@@ -65,7 +65,7 @@ const createOrder = async (req, res) => {
         // Send only after commit, never inside the retryable transaction.
         // Idempotent checkout replays return above without sending again.
         try {
-            await emailService.sendOrderConfirmation(order);
+            await deliverOrderConfirmation(order._id);
         } catch {
             console.error('Order confirmation email failed for order', order.orderNumber);
         }
@@ -77,6 +77,20 @@ const createOrder = async (req, res) => {
         }
         return handleError(res, error);
     }
+};
+
+const resendOrderConfirmation = async (req, res) => {
+    try {
+        if (!isProductId(req.params.id)) throw fail('Order not found', 404);
+        const order = await Order.findById(req.params.id);
+        if (!order) throw fail('Order not found', 404);
+        if (req.user.role !== 'admin' && !ownsOrder(order, req.user)) throw fail('Not authorized to access this order.', 403);
+        if (order.status === 'cancelled') throw fail('This order was cancelled. View your order details for the current status.');
+        const result = await deliverOrderConfirmation(order._id, { resend: true });
+        if (result === 'skipped') return res.status(429).json({ success: false, error: 'Please wait two minutes before requesting another confirmation.' });
+        if (result === 'failed') return res.status(503).json({ success: false, error: 'Your order is saved, but we could not send the email. Please contact support with your order number.' });
+        return res.json({ success: true, message: 'Confirmation submitted for delivery. Please check your inbox and spam folder.' });
+    } catch (error) { return handleError(res, error); }
 };
 
 const getOrders = async (req, res) => {
@@ -146,4 +160,4 @@ const cancelOrder = async (req, res) => {
     } catch (error) { return handleError(res, error); }
 };
 
-module.exports = { createOrder, quoteOrder, getOrders, getOrderById, updateOrderStatus, trackOrder, cancelOrder };
+module.exports = { resendOrderConfirmation, createOrder, quoteOrder, getOrders, getOrderById, updateOrderStatus, trackOrder, cancelOrder };

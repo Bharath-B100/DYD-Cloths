@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const {
+    resendOrderConfirmation,
     createOrder,
     quoteOrder,
     getOrders,
@@ -21,6 +22,7 @@ router.get('/track', trackOrder);
 // Protected routes (User)
 router.post('/', protect, createOrder);
 router.post('/quote', protect, quoteOrder);
+router.post('/:id/confirmation-email', protect, resendOrderConfirmation);
 router.put('/:id/cancel', protect, cancelOrder);
 
 // Protected routes: users can only access their own orders; admins manage all orders.

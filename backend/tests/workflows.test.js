@@ -188,3 +188,23 @@ test('order email sends after commit once; delivery failure does not undo checko
     assert.equal(calls, 1);
     assert.equal(await Order.countDocuments(), 1);
 });
+
+test('failed order confirmation can be retried after cooldown and success is recorded', async t => {
+    const email = require('../services/email');
+    const { deliverOrderConfirmation } = require('../services/orderEmailDelivery');
+    const { resendOrderConfirmation } = require('../controllers/orderController');
+    const delivery = t.mock.method(email, 'sendOrderConfirmation', async () => { throw new Error('Gmail authorization failed'); });
+    const product = await Product.create(productData);
+    const created = response(); await createOrder(request(product), created);
+    const id = created.body.data._id;
+    let order = await Order.findById(id);
+    assert.equal(order.confirmationEmail.status, 'failed');
+    assert.equal(await deliverOrderConfirmation(id, { resend: true }), 'skipped');
+    const outsider = response(); await resendOrderConfirmation({ params: { id: String(id) }, user: { id: new mongoose.Types.ObjectId().toString() } }, outsider); assert.equal(outsider.statusCode, 403);
+    await Order.updateOne({ _id: id }, { 'confirmationEmail.attemptedAt': new Date(Date.now() - 121000) });
+    delivery.mock.mockImplementation(async () => {});
+    const results = await Promise.all([deliverOrderConfirmation(id, { resend: true }), deliverOrderConfirmation(id, { resend: true })]);
+    assert.equal(results.filter(r => r === 'sent').length, 1);
+    order = await Order.findById(id); assert.equal(order.confirmationEmail.status, 'sent'); assert.ok(order.confirmationEmail.sentAt);
+    assert.equal(await deliverOrderConfirmation(id), 'skipped');
+});

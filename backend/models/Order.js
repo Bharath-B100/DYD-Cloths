@@ -57,6 +57,12 @@ const orderSchema = new mongoose.Schema({
         required: true
     },
     requestId: { type: String, maxlength: 100 },
+    confirmationEmail: {
+        status: { type: String, enum: ['pending', 'sending', 'sent', 'failed'], default: 'pending' },
+        attemptedAt: Date, sentAt: Date,
+        attempts: { type: Number, default: 0 },
+        failureReason: String
+    },
     customer: {
         name: {
             type: String,

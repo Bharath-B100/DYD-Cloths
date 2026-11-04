@@ -109,6 +109,7 @@ const Checkout = () => {
             if (!result.success || !order?._id) throw new Error(result.error || 'The server did not return an order confirmation.');
             orderPlacedRef.current = true;
             clearCart();
+            try { sessionStorage.setItem('latestOrderNumber', order.orderNumber || ''); sessionStorage.setItem('latestOrderEmail', order.customer?.email || shippingForm.email || user?.email || ''); } catch {}
             navigate(`/checkout/confirmation?id=${encodeURIComponent(order._id)}`, { replace: true, state: { order } });
         } catch (error) {
             setOrderError(error.message || 'Unable to place the order. Your cart has been kept.');
